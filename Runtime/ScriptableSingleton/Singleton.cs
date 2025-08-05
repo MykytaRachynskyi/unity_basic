@@ -1,4 +1,3 @@
-using Basic.UnityEditor;
 using UnityEngine;
 
 namespace Basic.Singleton
