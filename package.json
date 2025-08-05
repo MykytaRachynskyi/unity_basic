@@ -1,0 +1,12 @@
+{
+    "name": "com.arcticlime.unitybasic",
+    "version": "0.0.1",
+    "displayName": "ArcticLime Basic Unity Tools",
+    "description": "A set of useful tools for Unity development.",
+    "unity": "6000.0.26f1",
+    "author": {
+        "name": "Arctic Lime",
+        "email": "nikita@arcticlime.com",
+        "url": ""
+    }
+}
