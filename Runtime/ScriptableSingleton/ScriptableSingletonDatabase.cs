@@ -53,8 +53,6 @@ namespace Basic.Singleton
         private void RefreshDatabase()
         {
 #if UNITY_EDITOR
-            AddressableAssetSettings settings = AddressableAssetSettingsDefaultObject.Settings;
-
             allSingletons ??= new();
             allSingletons.Clear();
             var guids = UnityEditor.AssetDatabase.FindAssets("t: ScriptableObject");
@@ -69,17 +67,6 @@ namespace Basic.Singleton
                 if (type.IsSubclassOf(typeof(Singleton)))
                 {
                     allSingletons.Add(scriptableObject as Singleton);
-                    AddressableAssetEntry entry = settings.FindAssetEntry(guid);
-
-                    if (entry != null)
-                    {
-                        settings.RemoveAssetEntry(guid, true);
-                        settings.SetDirty(
-                            AddressableAssetSettings.ModificationEvent.EntryRemoved,
-                            entry,
-                            true
-                        );
-                    }
                 }
             }
             allSingletons.Sort((x, y) => x.name.CompareTo(y.name));
