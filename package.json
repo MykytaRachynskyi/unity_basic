@@ -10,6 +10,6 @@
         "url": ""
     },
     "dependencies": {
-        "com.dbrizov.naughtyattributes": "https://github.com/dbrizov/NaughtyAttributes.git"
+        "com.unity.addressables" : "2.7.0"
     }
 }

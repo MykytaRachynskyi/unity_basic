@@ -37,7 +37,7 @@ namespace Basic.EventLoop
                 type = typeof(CustomLateUpdate),
             };
 
-            var loopWithCustomLateUpdate = InsertSystemBefore<Update>(
+            var loopWithCustomLateUpdate = InsertSystemBefore<PreLateUpdate>(
                 in loopWithCustomUpdate,
                 customLateUpdate
             );
