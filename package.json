@@ -1,15 +1,16 @@
 {
-    "name": "com.arcticlime.unitybasic",
-    "version": "0.0.1",
-    "displayName": "ArcticLime UnityBasic",
-    "description": "A set of useful tools for Unity development.",
-    "unity": "6000.0",
-    "author": {
-        "name": "Arctic Lime",
-        "email": "nikita@arcticlime.com",
-        "url": ""
-    },
-    "dependencies": {
-        "com.unity.addressables" : "2.7.0"
-    }
+  "name": "com.arcticlime.unitybasic",
+  "version": "0.0.1",
+  "displayName": "ArcticLime UnityBasic",
+  "description": "A set of useful tools for Unity development.",
+  "unity": "6000.0",
+  "author": {
+    "name": "Arctic Lime",
+    "email": "nikita@arcticlime.com",
+    "url": ""
+  },
+  "dependencies": {
+    "com.unity.addressables": "2.7.0",
+    "com.unity.inputsystem": "1.14.1"
+  }
 }

@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using Basic.UnityEditorTools;
 using NaughtyAttributes;
-using UnityEditor.AddressableAssets;
-using UnityEditor.AddressableAssets.Settings;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 

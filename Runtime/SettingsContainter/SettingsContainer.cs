@@ -3,8 +3,8 @@ using UnityEngine;
 
 namespace Basic
 {
-    public class SettingsContainer<TContainer, TSettings>
-        : Singleton<SettingsContainer<TContainer, TSettings>>
+    public class SettingsContainer<TContainer, TSettings> : Singleton<TContainer>
+        where TContainer : SettingsContainer<TContainer, TSettings>
     {
         [SerializeField]
         protected TSettings settings;

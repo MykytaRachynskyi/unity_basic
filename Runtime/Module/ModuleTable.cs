@@ -4,33 +4,53 @@ using UnityEngine;
 
 namespace Basic.Modules
 {
-    public class ModuleTable : IEnumerable<KeyValuePair<int, IModule>>
+    public class ModuleTable : IEnumerable<KeyValuePair<int, GameModule>>
     {
-        private readonly Dictionary<int, IModule> _modules = new();
+        private IExternalModulesProvider _provider;
+        private readonly Dictionary<int, GameModule> _modules = new();
 
-        public void Add<T>(T module)
-            where T : IModule
+        public ModuleTable(IExternalModulesProvider provider) => _provider = provider;
+
+        public T Add<T>(T module)
+            where T : GameModule
         {
             if (!_modules.TryAdd(typeof(T).GetHashCode(), module))
             {
                 Debug.LogError($"Couldn't add module {typeof(T).Name} to the module table.");
-                return;
+                return null;
             }
+
+            module.ExternalModulesProvider = _provider;
+            return module;
+        }
+
+        public T Add<T>()
+            where T : GameModule, new()
+        {
+            T module = new();
+            if (!_modules.TryAdd(typeof(T).GetHashCode(), module))
+            {
+                Debug.LogError($"Couldn't add module {typeof(T).Name} to the module table.");
+                return null;
+            }
+
+            module.ExternalModulesProvider = _provider;
+            return module;
         }
 
         public T Get<T>()
-            where T : IModule
+            where T : GameModule, new()
         {
             if (_modules.TryGetValue(typeof(T).GetHashCode(), out var module))
             {
                 return (T)module;
             }
-            return default;
+            return null;
         }
 
         public void Clear() => _modules.Clear();
 
-        public IEnumerator<KeyValuePair<int, IModule>> GetEnumerator()
+        public IEnumerator<KeyValuePair<int, GameModule>> GetEnumerator()
         {
             return _modules.GetEnumerator();
         }
