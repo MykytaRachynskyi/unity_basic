@@ -30,7 +30,7 @@ namespace Basic.Singleton
                 _singletonMap = new(Instance.allSingletons.Count);
                 foreach (var singleton in Instance.allSingletons)
                 {
-                    _singletonMap.Add(singleton.GetType().GetHashCode(), singleton);
+                    _singletonMap.TryAdd(singleton.GetType().GetHashCode(), singleton);
                 }
             }
 

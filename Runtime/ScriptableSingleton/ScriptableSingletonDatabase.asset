@@ -13,7 +13,4 @@ MonoBehaviour:
   m_Name: ScriptableSingletonDatabase
   m_EditorClassIdentifier: 
   allSingletons:
-  - {fileID: 11400000, guid: 19d6427a15b188b4989b2668ebff98d4, type: 2}
-  - {fileID: 11400000, guid: c4a55141d08394a4abfa3ea1a82e255b, type: 2}
-  - {fileID: 11400000, guid: 080cb6014c14e304bb00652f77eff3de, type: 2}
-  - {fileID: 11400000, guid: 55f363408150b054590e2362d9496489, type: 2}
+  - {fileID: 11400000, guid: 5fc38784c6562184f8d18eac30ecf6b0, type: 2}

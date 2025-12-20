@@ -3,22 +3,92 @@ using Basic.Singleton;
 
 namespace Basic
 {
-    public abstract class Database<T> : Singleton<T>
-        where T : Database<T>
+    public abstract class Database<T, TConfig> : Singleton<T>
+        where T : Database<T, TConfig>
+        where TConfig : IConfig
     {
-        public abstract IEnumerable<IConfig> Configs { get; }
+        public abstract IList<TConfig> Configs { get; }
 
-        public void GetNames(List<string> list)
+        private Dictionary<GUID, TConfig> _configMap;
+        private HashSet<GUID> _usedGUIDs;
+
+        protected virtual void OnValidate()
+        {
+            _usedGUIDs ??= new();
+            _usedGUIDs.Clear();
+
+            bool dirty = false;
+            foreach (var config in Configs)
+            {
+                if (config.ConfigID.GUID == default || _usedGUIDs.Contains(config.ConfigID.GUID))
+                {
+                    config.EDITOR_SetGUID(GUID.Generate());
+                    dirty = true;
+                }
+
+                _usedGUIDs.Add(config.ConfigID.GUID);
+            }
+
+            if (dirty)
+            {
+#if UNITY_EDITOR
+                UnityEditor.EditorUtility.SetDirty(this);
+#endif
+            }
+        }
+
+        public void GetNames(IList<string> list)
         {
             if (list == null)
-            {
                 return;
-            }
+            if (Configs == null)
+                return;
 
             foreach (var config in Configs)
             {
                 list.Add(config.DEBUG_Name);
             }
+        }
+
+        public string GUIDToName(GUID guid)
+        {
+            if (!EnsureConfigMap())
+                return default;
+            if (_configMap.TryGetValue(guid, out var config))
+                return config.DEBUG_Name;
+            return null;
+        }
+
+        public int GUIDToIndex(GUID guid)
+        {
+            if (!EnsureConfigMap())
+                return -1;
+            if (_configMap.TryGetValue(guid, out var config))
+                return Configs.IndexOf(config);
+            return -1;
+        }
+
+        public GUID IndexToGUID(int target) => Configs[target].ConfigID.GUID;
+
+        public string IndexToName(int target) => Configs[target].DEBUG_Name;
+
+        public IConfig IndexToConfig(int newIndex) => Configs[newIndex];
+
+        private bool EnsureConfigMap()
+        {
+            if (Configs == null)
+                return false;
+
+            if (_configMap == null || _configMap.Count != Configs.Count)
+            {
+                _configMap = new Dictionary<GUID, TConfig>();
+                foreach (var config in Configs)
+                {
+                    _configMap[config.ConfigID.GUID] = config;
+                }
+            }
+
+            return true;
         }
     }
 }

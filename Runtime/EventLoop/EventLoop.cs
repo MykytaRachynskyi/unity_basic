@@ -19,7 +19,7 @@ namespace Basic.EventLoop
             System.Action lateUpdateCallback
         )
         {
-            var defaultLoop = PlayerLoop.GetDefaultPlayerLoop();
+            var defaultLoop = PlayerLoop.GetCurrentPlayerLoop();
 
             var customUpdate = new PlayerLoopSystem()
             {
