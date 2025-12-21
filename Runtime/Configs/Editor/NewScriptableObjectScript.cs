@@ -45,6 +45,11 @@ namespace Test
         [field: SerializeField]
         public TestID TestID { get; private set; }
 
-        public override IList<TestConfig> Configs => testConfigs;
+        protected override IList<TestConfig> Configs => testConfigs;
+
+        public static TestConfig Get(TestID id)
+        {
+            return Instance[id];
+        }
     }
 }

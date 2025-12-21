@@ -7,10 +7,25 @@ namespace Basic
         where T : Database<T, TConfig>
         where TConfig : IConfig
     {
-        public abstract IList<TConfig> Configs { get; }
+        protected abstract IList<TConfig> Configs { get; }
 
         private Dictionary<GUID, TConfig> _configMap;
         private HashSet<GUID> _usedGUIDs;
+
+        public TConfig this[GUIDBasedConfigID index]
+        {
+            get
+            {
+                foreach (var item in Configs)
+                {
+                    if (item.ConfigID == index)
+                    {
+                        return item;
+                    }
+                }
+                return default;
+            }
+        }
 
         protected virtual void OnValidate()
         {
