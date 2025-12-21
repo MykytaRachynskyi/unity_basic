@@ -26,11 +26,7 @@ namespace Basic.Singleton
         {
             if (_singletonMap == null)
             {
-                _singletonMap = new(Instance.allSingletons.Count);
-                foreach (var singleton in Instance.allSingletons)
-                {
-                    _singletonMap.TryAdd(singleton.GetType().GetHashCode(), singleton);
-                }
+                RecreateSingletonMap();
             }
 
             {
@@ -43,6 +39,15 @@ namespace Basic.Singleton
                 }
 
                 return (T)singleton;
+            }
+        }
+
+        private static void RecreateSingletonMap()
+        {
+            _singletonMap = new(Instance.allSingletons.Count);
+            foreach (var singleton in Instance.allSingletons)
+            {
+                _singletonMap.TryAdd(singleton.GetType().GetHashCode(), singleton);
             }
         }
 
@@ -69,6 +74,8 @@ namespace Basic.Singleton
             allSingletons.Sort((x, y) => x.name.CompareTo(y.name));
             UnityEditor.EditorUtility.SetDirty(this);
             UnityEditor.AssetDatabase.SaveAssetIfDirty(this);
+
+            RecreateSingletonMap();
 #endif
         }
 
