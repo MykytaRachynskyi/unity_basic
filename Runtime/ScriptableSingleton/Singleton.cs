@@ -16,6 +16,11 @@ namespace Basic.Singleton
                 if (_instance == null)
                 {
                     _instance = ScriptableSingletonDatabase.GetSingleton<T>();
+                    if (_instance == null)
+                    {
+                        ScriptableSingletonDatabase.Refresh();
+                        _instance = ScriptableSingletonDatabase.GetSingleton<T>();
+                    }
                 }
 
                 return _instance;
