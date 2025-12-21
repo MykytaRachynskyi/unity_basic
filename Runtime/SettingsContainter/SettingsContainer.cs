@@ -6,7 +6,7 @@ namespace Basic
     public class SettingsContainer<TContainer, TSettings> : Singleton<TContainer>
         where TContainer : SettingsContainer<TContainer, TSettings>
     {
-        [SerializeField]
+        [SerializeField, InlineProperty]
         protected TSettings settings;
 
         public static TSettings Settings

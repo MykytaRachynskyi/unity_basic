@@ -24,22 +24,8 @@ namespace Basic.Modules
             return module;
         }
 
-        public T Add<T>()
-            where T : GameModule, new()
-        {
-            T module = new();
-            if (!_modules.TryAdd(typeof(T).GetHashCode(), module))
-            {
-                Debug.LogError($"Couldn't add module {typeof(T).Name} to the module table.");
-                return null;
-            }
-
-            module.ExternalModulesProvider = _provider;
-            return module;
-        }
-
         public T Get<T>()
-            where T : GameModule, new()
+            where T : GameModule
         {
             if (_modules.TryGetValue(typeof(T).GetHashCode(), out var module))
             {
