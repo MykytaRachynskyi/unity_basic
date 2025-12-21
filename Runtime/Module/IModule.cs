@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Basic.Modules
@@ -5,17 +6,25 @@ namespace Basic.Modules
     public interface IExternalModulesProvider
     {
         T Get<T>()
-            where T : GameModule, new();
+            where T : GameModule;
     }
 
     public abstract class GameModule
     {
-        public IExternalModulesProvider ExternalModulesProvider { private get; set; }
+        public List<IExternalModulesProvider> ExternalModulesProviders { private get; set; }
 
         protected T External<T>()
-            where T : GameModule, new()
+            where T : GameModule
         {
-            return ExternalModulesProvider.Get<T>();
+            foreach (var provider in ExternalModulesProviders)
+            {
+                var module = provider.Get<T>();
+                if (module != null)
+                {
+                    return module;
+                }
+            }
+            return null;
         }
 
         public abstract void Deinit();

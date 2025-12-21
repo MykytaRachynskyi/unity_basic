@@ -6,10 +6,25 @@ namespace Basic.Modules
 {
     public class ModuleTable : IEnumerable<KeyValuePair<int, GameModule>>
     {
-        private IExternalModulesProvider _provider;
+        private List<IExternalModulesProvider> _providers;
         private readonly Dictionary<int, GameModule> _modules = new();
 
-        public ModuleTable(IExternalModulesProvider provider) => _provider = provider;
+        public ModuleTable(IExternalModulesProvider provider)
+        {
+            _providers = new() { provider };
+        }
+
+        public void AddProvider(IExternalModulesProvider provider)
+        {
+            if (!_providers.Contains(provider))
+            {
+                _providers.Add(provider);
+            }
+            else
+            {
+                Debug.LogError("The provider has already been added to the module table.");
+            }
+        }
 
         public T Add<T>(T module)
             where T : GameModule
@@ -20,7 +35,7 @@ namespace Basic.Modules
                 return null;
             }
 
-            module.ExternalModulesProvider = _provider;
+            module.ExternalModulesProviders = _providers;
             return module;
         }
 
