@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Basic.UnityEditorTools;
 using NaughtyAttributes;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -104,8 +103,16 @@ namespace Basic.Singleton
             }
         }
 
-        private static bool LoadFromAssetDatabase(out ScriptableSingletonDatabase instance) =>
-            EditorTools.TryLoadAssetFromAssetDatabase(out instance);
+        private static bool LoadFromAssetDatabase(out ScriptableSingletonDatabase instance)
+#if UNITY_EDITOR
+            =>
+            UnityEditorTools.EditorTools.TryLoadAssetFromAssetDatabase(out instance);
+#else
+        {
+            instance = null;
+            return false;
+        }
+#endif
 
         private static bool LoadFromAddressables(out ScriptableSingletonDatabase instance)
         {
