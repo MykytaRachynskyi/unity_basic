@@ -7,6 +7,7 @@ namespace Basic.Stages
         public void Deinit();
         public void Update() { }
         public void LateUpdate() { }
+        public void FixedUpdate() { }
         public void OnGUI() { }
         public void OnDrawGizmos() { }
     }
