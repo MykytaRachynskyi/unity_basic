@@ -22,7 +22,10 @@ namespace Basic
             return sceneReference.sceneName;
         }
     }
+}
 
+namespace Basic.UnityEditorTools
+{
 #if UNITY_EDITOR
     [CustomPropertyDrawer(typeof(SceneReference))]
     public class SceneReferenceDrawer : PropertyDrawer
