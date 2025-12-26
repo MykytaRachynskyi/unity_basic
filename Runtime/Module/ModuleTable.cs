@@ -4,18 +4,18 @@ using UnityEngine;
 
 namespace Basic.Modules
 {
-    public class ModuleTable : IEnumerable<KeyValuePair<int, GameModule>>
+    public class ModuleTable : IEnumerable<KeyValuePair<int, GameModule>>, IExternalModulesProvider
     {
-        private List<IExternalModulesProvider> _providers;
+        private readonly List<IExternalModulesProvider> _providers = new();
         private readonly Dictionary<int, GameModule> _modules = new();
-
-        public ModuleTable(IExternalModulesProvider provider)
-        {
-            _providers = new() { provider };
-        }
 
         public void AddProvider(IExternalModulesProvider provider)
         {
+            if (provider == this)
+            {
+                return;
+            }
+
             if (!_providers.Contains(provider))
             {
                 _providers.Add(provider);
@@ -35,7 +35,7 @@ namespace Basic.Modules
                 return null;
             }
 
-            module.ExternalModulesProviders = _providers;
+            module.ExternalModulesProviders = new() { this };
             return module;
         }
 
@@ -45,6 +45,15 @@ namespace Basic.Modules
             if (_modules.TryGetValue(typeof(T).GetHashCode(), out var module))
             {
                 return (T)module;
+            }
+
+            foreach (var provider in _providers)
+            {
+                var externalModule = provider.Get<T>();
+                if (externalModule != null)
+                {
+                    return externalModule;
+                }
             }
 
             return null;
