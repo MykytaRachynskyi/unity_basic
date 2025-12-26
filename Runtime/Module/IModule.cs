@@ -13,7 +13,7 @@ namespace Basic.Modules
     {
         public List<IExternalModulesProvider> ExternalModulesProviders { private get; set; }
 
-        protected T External<T>()
+        protected T Get<T>()
             where T : GameModule
         {
             foreach (var provider in ExternalModulesProviders)
