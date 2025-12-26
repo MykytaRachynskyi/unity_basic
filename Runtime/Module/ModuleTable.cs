@@ -46,6 +46,16 @@ namespace Basic.Modules
             {
                 return (T)module;
             }
+
+            foreach (var provider in _providers)
+            {
+                var externalModule = provider.Get<T>();
+                if (externalModule != null)
+                {
+                    return externalModule;
+                }
+            }
+
             return null;
         }
 
