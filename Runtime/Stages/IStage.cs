@@ -4,6 +4,7 @@ namespace Basic.Stages
 {
     public interface IStage
     {
+        public bool Initialized { get; set; }
         public void Deinit();
         public void Update() { }
         public void LateUpdate() { }
