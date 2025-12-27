@@ -4,149 +4,170 @@ using UnityEngine;
 
 namespace Basic
 {
-    public class VisualizationWindow : EditorWindow
-    {
-        public delegate void DrawVisualizationDelegate(SceneView sceneView);
-        public delegate void DrawGUIDelegate();
+	public class VisualizationWindow : EditorWindow
+	{
+		public delegate void DrawVisualizationDelegate(SceneView sceneView);
+		public delegate void DrawGUIDelegate();
 
-        private class ModuleEntry
-        {
-            public string name;
-            public string description;
-            public DrawVisualizationDelegate drawCallback;
-            public DrawGUIDelegate guiCallback;
-            public bool enabled;
-            public bool foldout;
-        }
+		private class ModuleEntry
+		{
+			public string name;
+			public string description;
+			public DrawVisualizationDelegate drawCallback;
+			public DrawGUIDelegate guiCallback;
+			public bool enabled;
+			public bool foldout;
 
-        private static List<ModuleEntry> modules = new List<ModuleEntry>();
-        private Vector2 scrollPosition;
+			private string EnabledKey => $"VizModule_{name}_Enabled";
+			private string FoldoutKey => $"VizModule_{name}_Foldout";
 
-        [MenuItem("Tools/Basic/Editor Visualizations")]
-        static void Init()
-        {
-            var window = GetWindow<VisualizationWindow>("Editor Visualizations");
-            window.Show();
-        }
+			public void LoadState()
+			{
+				enabled = EditorPrefs.GetBool(EnabledKey, enabled);
+				foldout = EditorPrefs.GetBool(FoldoutKey, foldout);
+			}
 
-        public static void RegisterModule(
-            string moduleName,
-            DrawVisualizationDelegate drawCallback,
-            DrawGUIDelegate guiCallback = null,
-            string description = "",
-            bool enabledByDefault = true
-        )
-        {
-            var entry = new ModuleEntry
-            {
-                name = moduleName,
-                description = description,
-                drawCallback = drawCallback,
-                guiCallback = guiCallback,
-                enabled = enabledByDefault,
-                foldout = false,
-            };
-            modules.Add(entry);
-        }
+			public void SaveState()
+			{
+				EditorPrefs.SetBool(EnabledKey, enabled);
+				EditorPrefs.SetBool(FoldoutKey, foldout);
+			}
+		}
 
-        public static void UnregisterModule(string moduleName)
-        {
-            modules.RemoveAll(m => m.name == moduleName);
-        }
+		private static readonly List<ModuleEntry> _modules = new();
+		private Vector2 _scrollPosition;
 
-        private void OnEnable()
-        {
-            SceneView.duringSceneGui += OnSceneGUI;
-        }
+		[MenuItem("Tools/Basic/Editor Visualizations")]
+		static void Init()
+		{
+			var window = GetWindow<VisualizationWindow>("Editor Visualizations");
+			window.Show();
+		}
 
-        private void OnDisable()
-        {
-            SceneView.duringSceneGui -= OnSceneGUI;
-        }
+		public static void RegisterModule(
+			string moduleName,
+			DrawVisualizationDelegate drawCallback,
+			DrawGUIDelegate guiCallback = null,
+			string description = "",
+			bool enabledByDefault = true
+		)
+		{
+			var entry = new ModuleEntry
+			{
+				name = moduleName,
+				description = description,
+				drawCallback = drawCallback,
+				guiCallback = guiCallback,
+				enabled = enabledByDefault,
+				foldout = false,
+			};
 
-        private void OnSceneGUI(SceneView sceneView)
-        {
-            foreach (var module in modules)
-            {
-                if (module.enabled)
-                {
-                    module.drawCallback?.Invoke(sceneView);
-                }
-            }
-        }
+			// Load saved state if it exists
+			entry.LoadState();
 
-        private void OnGUI()
-        {
-            EditorGUILayout.LabelField("Visualization Modules", EditorStyles.boldLabel);
-            EditorGUILayout.Space();
+			_modules.Add(entry);
+		}
 
-            if (modules.Count == 0)
-            {
-                EditorGUILayout.HelpBox("No modules registered yet.", MessageType.Info);
-                return;
-            }
+		public static void UnregisterModule(string moduleName)
+		{
+			_modules.RemoveAll(m => m.name == moduleName);
+		}
 
-            scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
+		private void OnEnable()
+		{
+			SceneView.duringSceneGui += OnSceneGUI;
+		}
 
-            foreach (var module in modules)
-            {
-                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+		private void OnDisable()
+		{
+			SceneView.duringSceneGui -= OnSceneGUI;
+		}
 
-                // Header with checkbox and foldout
-                EditorGUILayout.BeginHorizontal();
+		private void OnSceneGUI(SceneView sceneView)
+		{
+			foreach (var module in _modules)
+			{
+				if (module.enabled)
+				{
+					module.drawCallback?.Invoke(sceneView);
+				}
+			}
+		}
 
-                bool newState = EditorGUILayout.Toggle(module.enabled, GUILayout.Width(20));
+		private void OnGUI()
+		{
+			EditorGUILayout.LabelField("Visualization Modules", EditorStyles.boldLabel);
+			EditorGUILayout.Space();
 
-                if (newState != module.enabled)
-                {
-                    module.enabled = newState;
-                    SceneView.RepaintAll();
-                }
+			if (_modules.Count == 0)
+			{
+				EditorGUILayout.HelpBox("No modules registered yet.", MessageType.Info);
+				return;
+			}
 
-                // Only show foldout if module is enabled and has GUI callback
-                if (module.enabled && module.guiCallback != null)
-                {
-                    module.foldout = EditorGUILayout.Foldout(module.foldout, module.name, true);
-                }
-                else
-                {
-                    EditorGUILayout.LabelField(module.name);
-                }
+			_scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
-                EditorGUILayout.EndHorizontal();
+			foreach (var module in _modules)
+			{
+				EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-                // Description
-                if (!string.IsNullOrEmpty(module.description))
-                {
-                    EditorGUI.indentLevel++;
-                    EditorGUILayout.LabelField(module.description, EditorStyles.miniLabel);
-                    EditorGUI.indentLevel--;
-                }
+				EditorGUILayout.BeginHorizontal();
 
-                // Module-specific GUI controls
-                if (module.enabled && module.foldout && module.guiCallback != null)
-                {
-                    EditorGUI.indentLevel++;
-                    EditorGUILayout.Space(5);
+				bool newState = EditorGUILayout.Toggle(module.enabled, GUILayout.Width(20));
 
-                    EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-                    module.guiCallback.Invoke();
-                    EditorGUILayout.EndVertical();
+				if (newState != module.enabled)
+				{
+					module.enabled = newState;
+					module.SaveState();
+					SceneView.RepaintAll();
+				}
 
-                    EditorGUI.indentLevel--;
-                }
+				if (module.enabled && module.guiCallback != null)
+				{
+					bool newFoldout = EditorGUILayout.Foldout(module.foldout, module.name, true);
+					if (newFoldout != module.foldout)
+					{
+						module.foldout = newFoldout;
+						module.SaveState();
+					}
+				}
+				else
+				{
+					EditorGUILayout.LabelField(module.name);
+				}
 
-                EditorGUILayout.EndVertical();
-                EditorGUILayout.Space(5);
-            }
+				EditorGUILayout.EndHorizontal();
 
-            EditorGUILayout.EndScrollView();
+				if (!string.IsNullOrEmpty(module.description))
+				{
+					EditorGUI.indentLevel++;
+					EditorGUILayout.LabelField(module.description, EditorStyles.miniLabel);
+					EditorGUI.indentLevel--;
+				}
 
-            EditorGUILayout.Space();
-            if (GUILayout.Button("Refresh Scene View"))
-            {
-                SceneView.RepaintAll();
-            }
-        }
-    }
+				if (module.enabled && module.foldout && module.guiCallback != null)
+				{
+					EditorGUI.indentLevel++;
+					EditorGUILayout.Space(5);
+
+					EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+					module.guiCallback.Invoke();
+					EditorGUILayout.EndVertical();
+
+					EditorGUI.indentLevel--;
+				}
+
+				EditorGUILayout.EndVertical();
+				EditorGUILayout.Space(5);
+			}
+
+			EditorGUILayout.EndScrollView();
+
+			EditorGUILayout.Space();
+			if (GUILayout.Button("Refresh Scene View"))
+			{
+				SceneView.RepaintAll();
+			}
+		}
+	}
 }
