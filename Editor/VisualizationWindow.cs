@@ -22,10 +22,10 @@ namespace Basic
         private static List<ModuleEntry> modules = new List<ModuleEntry>();
         private Vector2 scrollPosition;
 
-        [MenuItem("Tools/Visualization Manager")]
+        [MenuItem("Tools/Basic/Editor Visualizations")]
         static void Init()
         {
-            var window = GetWindow<VisualizationWindow>("Viz Manager");
+            var window = GetWindow<VisualizationWindow>("Editor Visualizations");
             window.Show();
         }
 
