@@ -1,6 +1,6 @@
 {
   "name": "com.arcticlime.unitybasic",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "displayName": "ArcticLime UnityBasic",
   "description": "A set of useful tools for Unity development.",
   "unity": "6000.0",
