@@ -33,29 +33,33 @@ namespace Basic.Input
         public static bool operator !=(InputRegion a, InputRegion b) => a.ID != b.ID;
     }
 
-    public struct InputRegionHandler
+    public struct InputRegionHandler<TInputActions>
+        where TInputActions : new()
     {
         public InputRegion Region;
         public System.Action RegionEnteredCallback;
         public System.Action RegionExitedCallback;
-        public System.Action<InputActions> HandleInputCallback;
+        public System.Action<TInputActions> HandleInputCallback;
     }
 
-    public static partial class InputController
+    public static class InputController<TInputActions>
+        where TInputActions : new()
     {
         // Private state
-        private static readonly Dictionary<GUID, InputRegionHandler> _regionHandlers = new();
+        private static readonly Dictionary<
+            GUID,
+            InputRegionHandler<TInputActions>
+        > _regionHandlers = new();
         private static readonly List<InputRegion> _regionStack = new(8);
-
-        private static readonly InputActions _inputActions = new();
+        private static readonly TInputActions _inputActions = new();
 
         // Public API
-        public static void RegisterRegionHandler(InputRegionHandler handler)
+        public static void RegisterRegionHandler(InputRegionHandler<TInputActions> handler)
         {
             _regionHandlers.TryAdd(handler.Region.ID, handler);
         }
 
-        public static void DeregisterRegionHandler(InputRegionHandler handler)
+        public static void DeregisterRegionHandler(InputRegionHandler<TInputActions> handler)
         {
             _regionHandlers.Remove(handler.Region.ID);
         }
@@ -80,7 +84,7 @@ namespace Basic.Input
 
         public static void PushRegion(InputRegion region)
         {
-            if (_regionStack[^1] == region)
+            if (_regionStack.Count > 0 && _regionStack[^1] == region)
             {
                 return;
             }
@@ -90,7 +94,10 @@ namespace Basic.Input
                 _regionStack.Remove(region);
             }
 
-            if (_regionHandlers.TryGetValue(_regionStack[^1].ID, out var handler))
+            if (
+                _regionStack.Count > 0
+                && _regionHandlers.TryGetValue(_regionStack[^1].ID, out var handler)
+            )
             {
                 handler.RegionExitedCallback?.Invoke();
             }
@@ -119,7 +126,10 @@ namespace Basic.Input
 
                 _regionStack.Remove(region);
 
-                if (_regionHandlers.TryGetValue(_regionStack[^1].ID, out handler))
+                if (
+                    _regionStack.Count > 0
+                    && _regionHandlers.TryGetValue(_regionStack[^1].ID, out handler)
+                )
                 {
                     handler.RegionEnteredCallback?.Invoke();
                 }
