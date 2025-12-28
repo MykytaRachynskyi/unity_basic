@@ -53,6 +53,9 @@ namespace Basic.Input
         private static readonly List<InputRegion> _regionStack = new(8);
         private static readonly TInputActions _inputActions = new();
 
+        // Public getters
+        public static TInputActions InputActions => _inputActions;
+
         // Public API
         public static void RegisterRegionHandler(InputRegionHandler<TInputActions> handler)
         {
