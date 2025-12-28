@@ -33,6 +33,8 @@ namespace Basic.Modules
 
         public virtual void LateUpdate() { }
 
+        public virtual void FixedUpdate() { }
+
         public virtual void OnGUI() { }
 
         public virtual void OnDrawGizmos() { }
