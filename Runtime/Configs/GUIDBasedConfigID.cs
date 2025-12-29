@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -65,9 +66,24 @@ namespace Basic
         public abstract GUID IndexToGUID(int newIndex);
         public abstract IConfig IndexToConfig(int newIndex);
 
+        public static bool operator ==(GUIDBasedConfigID a, GUIDBasedConfigID b)
+        {
+            if (a is null && b is null)
+                return true;
+            if (a is null || b is null)
+                return false;
+            return a._guid == b._guid;
+        }
+
+        public static bool operator !=(GUIDBasedConfigID a, GUIDBasedConfigID b) => !(a == b);
+
+        public override bool Equals(object obj) =>
+            obj is GUIDBasedConfigID iD && EqualityComparer<GUID>.Default.Equals(_guid, iD._guid);
+
+        public override int GetHashCode() => HashCode.Combine(_guid);
+
 #if UNITY_EDITOR
         public void EDITOR_SetGUID(GUID guid) => _guid = guid;
-
 #endif
     }
 }
