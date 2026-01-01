@@ -48,7 +48,7 @@ namespace Basic.EventLoop
             var customFixedUpdate = new PlayerLoopSystem()
             {
                 subSystemList = null,
-                updateDelegate = new(lateUpdateCallback),
+                updateDelegate = new(fixedUpdateCallback),
                 type = typeof(CustomFixedUpdate),
             };
 
