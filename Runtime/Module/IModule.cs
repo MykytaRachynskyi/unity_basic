@@ -33,7 +33,7 @@ namespace Basic.Modules
 
         public virtual void LateUpdate() { }
 
-        public virtual void FixedUpdate() { }
+        public virtual void FixedUpdate(ulong tick) { }
 
         public virtual void OnGUI() { }
 

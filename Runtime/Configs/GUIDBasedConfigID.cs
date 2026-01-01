@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -80,7 +79,7 @@ namespace Basic
         public override bool Equals(object obj) =>
             obj is GUIDBasedConfigID iD && EqualityComparer<GUID>.Default.Equals(_guid, iD._guid);
 
-        public override int GetHashCode() => HashCode.Combine(_guid);
+        public override int GetHashCode() => System.HashCode.Combine(_guid);
 
 #if UNITY_EDITOR
         public void EDITOR_SetGUID(GUID guid) => _guid = guid;
