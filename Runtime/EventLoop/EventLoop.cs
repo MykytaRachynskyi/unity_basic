@@ -11,12 +11,15 @@ namespace Basic.EventLoop
 
         private class CustomLateUpdate { }
 
+        private class CustomFixedUpdate { }
+
         private static List<PlayerLoopSystem> _insertedSystems = new();
 
         // Public API
         public static void SetupGameLoop(
             System.Action updateCallback,
-            System.Action lateUpdateCallback
+            System.Action lateUpdateCallback,
+            System.Action fixedUpdateCallback
         )
         {
             var defaultLoop = PlayerLoop.GetCurrentPlayerLoop();
@@ -42,7 +45,19 @@ namespace Basic.EventLoop
                 customLateUpdate
             );
 
-            PlayerLoop.SetPlayerLoop(loopWithCustomLateUpdate);
+            var customFixedUpdate = new PlayerLoopSystem()
+            {
+                subSystemList = null,
+                updateDelegate = new(lateUpdateCallback),
+                type = typeof(CustomFixedUpdate),
+            };
+
+            var loopWithCustomFixedUpdate = InsertSystemBefore<FixedUpdate>(
+                in loopWithCustomLateUpdate,
+                customFixedUpdate
+            );
+
+            PlayerLoop.SetPlayerLoop(loopWithCustomFixedUpdate);
         }
 
         public static void DumpCurrentPlayerLoop()
