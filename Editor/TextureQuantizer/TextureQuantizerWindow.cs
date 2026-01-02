@@ -39,7 +39,7 @@ namespace Basic.UnityEditorTools
     {
         private class ColorEqualityComparer : System.Collections.Generic.IEqualityComparer<Color>
         {
-            private const float Epsilon = 0.1f;
+            private const float Epsilon = 0.001f;
 
             public bool Equals(Color x, Color y)
             {
@@ -378,10 +378,10 @@ namespace Basic.UnityEditorTools
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"Error during quantization: {e.Message}");
+                Debug.LogError($"Error during quantization: {e}");
                 EditorUtility.DisplayDialog(
                     "Error",
-                    $"An error occurred during quantization:\n{e.Message}",
+                    $"An error occurred during quantization:\n{e}",
                     "OK"
                 );
             }
@@ -420,6 +420,7 @@ namespace Basic.UnityEditorTools
                 }
             }
 
+            /*
             var myList = uniqueColors.ToList();
             myList.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
             foreach (var pair in myList)
@@ -430,6 +431,7 @@ namespace Basic.UnityEditorTools
                     uniqueColors.Remove(pair.Key);
                 }
             }
+            */
 
             distinctPaletteColors = new Color[uniqueColors.Count];
             uniqueColors.Keys.CopyTo(distinctPaletteColors, 0);
