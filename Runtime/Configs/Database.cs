@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Basic.Singleton;
+using UnityEngine;
 
 namespace Basic
 {
@@ -37,6 +38,7 @@ namespace Basic
             {
                 if (config.ConfigID.GUID == default || _usedGUIDs.Contains(config.ConfigID.GUID))
                 {
+                    Debug.Log($"Generating new ID for config {config.DEBUG_Name} in {name}!");
                     config.EDITOR_SetGUID(GUID.Generate());
                     dirty = true;
                 }
