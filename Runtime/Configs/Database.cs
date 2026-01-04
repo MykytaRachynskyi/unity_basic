@@ -38,8 +38,11 @@ namespace Basic
             {
                 if (config.ConfigID.GUID == default || _usedGUIDs.Contains(config.ConfigID.GUID))
                 {
-                    Debug.Log($"Generating new ID for config {config.DEBUG_Name} in {name}!");
-                    config.EDITOR_SetGUID(GUID.Generate());
+                    var newGUID = GUID.Generate();
+                    Debug.Log(
+                        $"Generating new ID for config {config.DEBUG_Name} in {name}!\nWas:{config.ConfigID.GUID}\nNew:{newGUID}"
+                    );
+                    config.EDITOR_SetGUID(newGUID);
                     dirty = true;
                 }
 
