@@ -6,6 +6,6 @@ namespace Basic
     public class AnimationAsset : ScriptableObject
     {
         public AnimationClip Clip;
-        public float Speed;
+        public float Speed = 1f;
     }
 }
