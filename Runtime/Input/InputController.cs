@@ -142,5 +142,15 @@ namespace Basic.Input
                 _regionStack.Remove(region);
             }
         }
+
+        public static void ClearHandlers()
+        {
+            _regionHandlers.Clear();
+        }
+
+        public static void ClearRegions()
+        {
+            _regionStack.Clear();
+        }
     }
 }
