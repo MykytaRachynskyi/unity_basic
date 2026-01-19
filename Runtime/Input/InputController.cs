@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace Basic.Input
 {
@@ -48,7 +49,7 @@ namespace Basic.Input
         // Private state
         private static readonly Dictionary<
             GUID,
-            InputRegionHandler<TInputActions>
+            List<InputRegionHandler<TInputActions>>
         > _regionHandlers = new();
         private static readonly List<InputRegion> _regionStack = new(8);
         private static readonly TInputActions _inputActions = new();
@@ -60,12 +61,32 @@ namespace Basic.Input
         // Public API
         public static void RegisterRegionHandler(InputRegionHandler<TInputActions> handler)
         {
-            _regionHandlers.TryAdd(handler.Region.ID, handler);
+            if (!_regionHandlers.ContainsKey(handler.Region.ID))
+            {
+                if (!_regionHandlers.TryAdd(handler.Region.ID, new()))
+                {
+                    Debug.LogError($"Failed to add region {handler.Region.ID} to dictionary.");
+                }
+            }
+
+            if (!_regionHandlers[handler.Region.ID].Contains(handler))
+            {
+                _regionHandlers[handler.Region.ID].Add(handler);
+            }
+            else
+            {
+                Debug.LogError(
+                    $"Failed to register handler for region {handler.Region}. Handler already registered."
+                );
+            }
         }
 
         public static void DeregisterRegionHandler(InputRegionHandler<TInputActions> handler)
         {
-            _regionHandlers.Remove(handler.Region.ID);
+            if (_regionHandlers.TryGetValue(handler.Region.ID, out var handlerList))
+            {
+                handlerList.Remove(handler);
+            }
         }
 
         public static void DispatchInput()
@@ -80,9 +101,12 @@ namespace Basic.Input
                 return;
             }
 
-            if (_regionHandlers.TryGetValue(_regionStack[^1].ID, out var handler))
+            if (_regionHandlers.TryGetValue(_regionStack[^1].ID, out var handlerList))
             {
-                handler.HandleInputCallback?.Invoke(_inputActions);
+                foreach (var handler in handlerList)
+                {
+                    handler.HandleInputCallback?.Invoke(_inputActions);
+                }
             }
         }
 
@@ -100,17 +124,23 @@ namespace Basic.Input
 
             if (
                 _regionStack.Count > 0
-                && _regionHandlers.TryGetValue(_regionStack[^1].ID, out var handler)
+                && _regionHandlers.TryGetValue(_regionStack[^1].ID, out var handlerList)
             )
             {
-                handler.RegionExitedCallback?.Invoke();
+                foreach (var handler in handlerList)
+                {
+                    handler.RegionExitedCallback?.Invoke();
+                }
             }
 
             _regionStack.Add(region);
 
-            if (_regionHandlers.TryGetValue(_regionStack[^1].ID, out handler))
+            if (_regionHandlers.TryGetValue(_regionStack[^1].ID, out handlerList))
             {
-                handler.RegionEnteredCallback?.Invoke();
+                foreach (var handler in handlerList)
+                {
+                    handler.RegionEnteredCallback?.Invoke();
+                }
             }
         }
 
@@ -123,19 +153,25 @@ namespace Basic.Input
 
             if (_regionStack[^1] == region)
             {
-                if (_regionHandlers.TryGetValue(_regionStack[^1].ID, out var handler))
+                if (_regionHandlers.TryGetValue(_regionStack[^1].ID, out var handlerList))
                 {
-                    handler.RegionExitedCallback?.Invoke();
+                    foreach (var handler in handlerList)
+                    {
+                        handler.RegionExitedCallback?.Invoke();
+                    }
                 }
 
                 _regionStack.Remove(region);
 
                 if (
                     _regionStack.Count > 0
-                    && _regionHandlers.TryGetValue(_regionStack[^1].ID, out handler)
+                    && _regionHandlers.TryGetValue(_regionStack[^1].ID, out handlerList)
                 )
                 {
-                    handler.RegionEnteredCallback?.Invoke();
+                    foreach (var handler in handlerList)
+                    {
+                        handler.RegionEnteredCallback?.Invoke();
+                    }
                 }
             }
             else
