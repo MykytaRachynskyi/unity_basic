@@ -12,10 +12,16 @@ namespace Basic.Singleton.Editor
 
         private Vector2 _listScrollPosition;
         private Vector2 _inspectorScrollPosition;
+
+        [SerializeField]
         private int _selectedIndex = -1;
+
+        [SerializeField]
+        private Object _selectedSingleton;
+
         private UnityEditor.Editor _currentEditor;
 
-        [MenuItem("Tools/Basic/Scriptable Singleton DB")]
+        [MenuItem("Window/Scriptable Singleton Editor")]
         public static void ShowWindow()
         {
             var window = GetWindow<ScriptableSingletonEditorWindow>("Singleton Editor");
@@ -25,13 +31,42 @@ namespace Basic.Singleton.Editor
         private void OnEnable()
         {
             LoadDatabase();
+            RestoreEditorIfNeeded();
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
         }
 
         private void OnDisable()
         {
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+            CleanupEditor();
+        }
+
+        private void OnPlayModeStateChanged(PlayModeStateChange state)
+        {
+            // Restore the editor after entering/exiting play mode
+            if (
+                state == PlayModeStateChange.EnteredEditMode
+                || state == PlayModeStateChange.EnteredPlayMode
+            )
+            {
+                RestoreEditorIfNeeded();
+            }
+        }
+
+        private void RestoreEditorIfNeeded()
+        {
+            if (_selectedSingleton != null && _currentEditor == null)
+            {
+                _currentEditor = UnityEditor.Editor.CreateEditor(_selectedSingleton);
+            }
+        }
+
+        private void CleanupEditor()
+        {
             if (_currentEditor != null)
             {
                 DestroyImmediate(_currentEditor);
+                _currentEditor = null;
             }
         }
 
@@ -69,6 +104,9 @@ namespace Basic.Singleton.Editor
 
             _serializedDatabase.Update();
 
+            // Ensure editor is restored if needed (handles recompilation)
+            RestoreEditorIfNeeded();
+
             EditorGUILayout.BeginHorizontal();
 
             // Left panel - List of singletons
@@ -98,11 +136,8 @@ namespace Basic.Singleton.Editor
                     ?.Invoke(_database, null);
                 _serializedDatabase.Update();
                 _selectedIndex = -1;
-                if (_currentEditor != null)
-                {
-                    DestroyImmediate(_currentEditor);
-                    _currentEditor = null;
-                }
+                _selectedSingleton = null;
+                CleanupEditor();
             }
 
             EditorGUILayout.Space(5);
@@ -181,23 +216,23 @@ namespace Basic.Singleton.Editor
 
             _selectedIndex = index;
 
-            // Destroy previous editor
-            if (_currentEditor != null)
-            {
-                DestroyImmediate(_currentEditor);
-                _currentEditor = null;
-            }
+            // Cleanup previous editor
+            CleanupEditor();
 
-            // Create new editor for selected singleton
+            // Store and create new editor for selected singleton
             if (_selectedIndex >= 0 && _selectedIndex < _allSingletonsProperty.arraySize)
             {
                 var element = _allSingletonsProperty.GetArrayElementAtIndex(_selectedIndex);
-                var singleton = element.objectReferenceValue;
+                _selectedSingleton = element.objectReferenceValue;
 
-                if (singleton != null)
+                if (_selectedSingleton != null)
                 {
-                    _currentEditor = UnityEditor.Editor.CreateEditor(singleton);
+                    _currentEditor = UnityEditor.Editor.CreateEditor(_selectedSingleton);
                 }
+            }
+            else
+            {
+                _selectedSingleton = null;
             }
 
             _inspectorScrollPosition = Vector2.zero;
