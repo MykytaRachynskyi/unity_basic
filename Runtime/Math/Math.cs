@@ -2,8 +2,16 @@ using UnityEngine;
 
 namespace Basic
 {
-    public class Math
+    public static class Math
     {
+#pragma warning disable IDE1006 // Naming Styles
+        public static Vector2 xz(this Vector3 vec) => new(vec.x, vec.z);
+
+        public static Vector3 x0z(this Vector3 vec) => new(vec.x, 0f, vec.z);
+
+        public static Vector4 xyzw(this Vector3 vec) => new(vec.x, vec.y, vec.z, 1f);
+#pragma warning restore IDE1006 // Naming Styles
+
         public static bool RayIntersectsPlane(
             Ray ray,
             Vector3 planePoint,
