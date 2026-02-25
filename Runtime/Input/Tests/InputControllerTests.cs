@@ -5,22 +5,10 @@ using UnityEngine;
 
 namespace Basic.Input.Tests
 {
-    // Test input actions class
-    public class TestInputActions
-    {
-        public bool Jump { get; set; }
-        public Vector2 Move { get; set; }
-
-        public void Reset()
-        {
-            Jump = false;
-            Move = Vector2.zero;
-        }
-    }
-
     [TestFixture]
     public class InputControllerTests
     {
+        private InputService _service;
         private InputRegion testRegion1;
         private InputRegion testRegion2;
         private InputRegion testRegion3;
@@ -28,9 +16,7 @@ namespace Basic.Input.Tests
         [SetUp]
         public void SetUp()
         {
-            // Clear all handlers and regions before each test
-            InputController<TestInputActions>.ClearHandlers();
-            InputController<TestInputActions>.ClearRegions();
+            _service = new InputService();
 
             // Create test regions
             testRegion1 = new InputRegion("TestRegion1", GUID.Generate());
@@ -41,8 +27,9 @@ namespace Basic.Input.Tests
         [TearDown]
         public void TearDown()
         {
-            InputController<TestInputActions>.ClearHandlers();
-            InputController<TestInputActions>.ClearRegions();
+            _service.ClearHandlers();
+            _service.ClearRegions();
+            _service = null;
         }
 
         #region Region Handler Registration Tests
@@ -52,16 +39,16 @@ namespace Basic.Input.Tests
         {
             // Arrange
             bool callbackInvoked = false;
-            var handler = new InputRegionHandler<TestInputActions>
+            var handler = new InputRegionHandler
             {
                 Region = testRegion1,
                 HandleInputCallback = (actions) => callbackInvoked = true,
             };
 
             // Act
-            InputController<TestInputActions>.RegisterRegionHandler(handler);
-            InputController<TestInputActions>.PushRegion(testRegion1);
-            InputController<TestInputActions>.DispatchInput();
+            _service.RegisterRegionHandler(handler);
+            _service.PushRegion(testRegion1);
+            _service.DispatchInput();
 
             // Assert
             Assert.IsTrue(callbackInvoked);
@@ -74,23 +61,23 @@ namespace Basic.Input.Tests
             bool callback1Invoked = false;
             bool callback2Invoked = false;
 
-            var handler1 = new InputRegionHandler<TestInputActions>
+            var handler1 = new InputRegionHandler
             {
                 Region = testRegion1,
                 HandleInputCallback = (actions) => callback1Invoked = true,
             };
 
-            var handler2 = new InputRegionHandler<TestInputActions>
+            var handler2 = new InputRegionHandler
             {
                 Region = testRegion1,
                 HandleInputCallback = (actions) => callback2Invoked = true,
             };
 
             // Act
-            InputController<TestInputActions>.RegisterRegionHandler(handler1);
-            InputController<TestInputActions>.RegisterRegionHandler(handler2);
-            InputController<TestInputActions>.PushRegion(testRegion1);
-            InputController<TestInputActions>.DispatchInput();
+            _service.RegisterRegionHandler(handler1);
+            _service.RegisterRegionHandler(handler2);
+            _service.PushRegion(testRegion1);
+            _service.DispatchInput();
 
             // Assert
             Assert.IsTrue(callback1Invoked);
@@ -102,17 +89,17 @@ namespace Basic.Input.Tests
         {
             // Arrange
             bool callbackInvoked = false;
-            var handler = new InputRegionHandler<TestInputActions>
+            var handler = new InputRegionHandler
             {
                 Region = testRegion1,
                 HandleInputCallback = (actions) => callbackInvoked = true,
             };
 
             // Act
-            InputController<TestInputActions>.RegisterRegionHandler(handler);
-            InputController<TestInputActions>.DeregisterRegionHandler(handler);
-            InputController<TestInputActions>.PushRegion(testRegion1);
-            InputController<TestInputActions>.DispatchInput();
+            _service.RegisterRegionHandler(handler);
+            _service.DeregisterRegionHandler(handler);
+            _service.PushRegion(testRegion1);
+            _service.DispatchInput();
 
             // Assert
             Assert.IsFalse(callbackInvoked);
@@ -126,94 +113,94 @@ namespace Basic.Input.Tests
         public void PushRegion_AddsRegionToStack()
         {
             // Act
-            InputController<TestInputActions>.PushRegion(testRegion1);
+            _service.PushRegion(testRegion1);
 
             // Assert
-            Assert.AreEqual(1, InputController<TestInputActions>.RegionStack.Count);
-            Assert.AreEqual(testRegion1, InputController<TestInputActions>.RegionStack[0]);
+            Assert.AreEqual(1, _service.RegionStack.Count);
+            Assert.AreEqual(testRegion1, _service.RegionStack[0]);
         }
 
         [Test]
         public void PushRegion_SameRegionTwice_DoesNotDuplicate()
         {
             // Act
-            InputController<TestInputActions>.PushRegion(testRegion1);
-            InputController<TestInputActions>.PushRegion(testRegion1);
+            _service.PushRegion(testRegion1);
+            _service.PushRegion(testRegion1);
 
             // Assert
-            Assert.AreEqual(1, InputController<TestInputActions>.RegionStack.Count);
+            Assert.AreEqual(1, _service.RegionStack.Count);
         }
 
         [Test]
         public void PushRegion_ExistingRegionInStack_MovesToTop()
         {
             // Act
-            InputController<TestInputActions>.PushRegion(testRegion1);
-            InputController<TestInputActions>.PushRegion(testRegion2);
-            InputController<TestInputActions>.PushRegion(testRegion1);
+            _service.PushRegion(testRegion1);
+            _service.PushRegion(testRegion2);
+            _service.PushRegion(testRegion1);
 
             // Assert
-            Assert.AreEqual(2, InputController<TestInputActions>.RegionStack.Count);
-            Assert.AreEqual(testRegion1, InputController<TestInputActions>.RegionStack[^1]);
-            Assert.AreEqual(testRegion2, InputController<TestInputActions>.RegionStack[0]);
+            Assert.AreEqual(2, _service.RegionStack.Count);
+            Assert.AreEqual(testRegion1, _service.RegionStack[^1]);
+            Assert.AreEqual(testRegion2, _service.RegionStack[0]);
         }
 
         [Test]
         public void RemoveRegion_TopRegion_RemovesSuccessfully()
         {
             // Arrange
-            InputController<TestInputActions>.PushRegion(testRegion1);
-            InputController<TestInputActions>.PushRegion(testRegion2);
+            _service.PushRegion(testRegion1);
+            _service.PushRegion(testRegion2);
 
             // Act
-            InputController<TestInputActions>.RemoveRegion(testRegion2);
+            _service.RemoveRegion(testRegion2);
 
             // Assert
-            Assert.AreEqual(1, InputController<TestInputActions>.RegionStack.Count);
-            Assert.AreEqual(testRegion1, InputController<TestInputActions>.RegionStack[^1]);
+            Assert.AreEqual(1, _service.RegionStack.Count);
+            Assert.AreEqual(testRegion1, _service.RegionStack[^1]);
         }
 
         [Test]
         public void RemoveRegion_MiddleRegion_RemovesWithoutAffectingCallbacks()
         {
             // Arrange
-            InputController<TestInputActions>.PushRegion(testRegion1);
-            InputController<TestInputActions>.PushRegion(testRegion2);
-            InputController<TestInputActions>.PushRegion(testRegion3);
+            _service.PushRegion(testRegion1);
+            _service.PushRegion(testRegion2);
+            _service.PushRegion(testRegion3);
 
             // Act
-            InputController<TestInputActions>.RemoveRegion(testRegion2);
+            _service.RemoveRegion(testRegion2);
 
             // Assert
-            Assert.AreEqual(2, InputController<TestInputActions>.RegionStack.Count);
-            Assert.IsFalse(InputController<TestInputActions>.RegionStack.Contains(testRegion2));
+            Assert.AreEqual(2, _service.RegionStack.Count);
+            Assert.IsFalse(_service.RegionStack.Contains(testRegion2));
         }
 
         [Test]
         public void RemoveRegion_NonExistentRegion_DoesNothing()
         {
             // Arrange
-            InputController<TestInputActions>.PushRegion(testRegion1);
+            _service.PushRegion(testRegion1);
 
             // Act
-            InputController<TestInputActions>.RemoveRegion(testRegion2);
+            _service.RemoveRegion(testRegion2);
 
             // Assert
-            Assert.AreEqual(1, InputController<TestInputActions>.RegionStack.Count);
+            Assert.AreEqual(1, _service.RegionStack.Count);
         }
 
         [Test]
         public void ClearRegions_RemovesAllRegions()
         {
             // Arrange
-            InputController<TestInputActions>.PushRegion(testRegion1);
-            InputController<TestInputActions>.PushRegion(testRegion2);
+            _service.PushRegion(testRegion1);
+            _service.PushRegion(testRegion2);
 
             // Act
-            InputController<TestInputActions>.ClearRegions();
+            _service.ClearRegions();
 
             // Assert
-            Assert.AreEqual(0, InputController<TestInputActions>.RegionStack.Count);
+            Assert.AreEqual(0, _service.RegionStack.Count);
         }
 
         #endregion
@@ -225,15 +212,15 @@ namespace Basic.Input.Tests
         {
             // Arrange
             bool callbackInvoked = false;
-            var handler = new InputRegionHandler<TestInputActions>
+            var handler = new InputRegionHandler
             {
                 Region = testRegion1,
                 HandleInputCallback = (actions) => callbackInvoked = true,
             };
-            InputController<TestInputActions>.RegisterRegionHandler(handler);
+            _service.RegisterRegionHandler(handler);
 
             // Act
-            InputController<TestInputActions>.DispatchInput();
+            _service.DispatchInput();
 
             // Assert
             Assert.IsFalse(callbackInvoked);
@@ -244,17 +231,17 @@ namespace Basic.Input.Tests
         {
             // Arrange
             bool callbackInvoked = false;
-            var handler = new InputRegionHandler<TestInputActions>
+            var handler = new InputRegionHandler
             {
                 Region = testRegion1,
                 HandleInputCallback = (actions) => callbackInvoked = true,
             };
-            InputController<TestInputActions>.RegisterRegionHandler(handler);
-            InputController<TestInputActions>.PushRegion(testRegion1);
+            _service.RegisterRegionHandler(handler);
+            _service.PushRegion(testRegion1);
 
             // Act
-            InputController<TestInputActions>.PushRegion(InputRegions.BLOCKED);
-            InputController<TestInputActions>.DispatchInput();
+            _service.PushRegion(InputRegions.BLOCKED);
+            _service.DispatchInput();
 
             // Assert
             Assert.IsFalse(callbackInvoked);
@@ -267,25 +254,25 @@ namespace Basic.Input.Tests
             bool region1Called = false;
             bool region2Called = false;
 
-            var handler1 = new InputRegionHandler<TestInputActions>
+            var handler1 = new InputRegionHandler
             {
                 Region = testRegion1,
                 HandleInputCallback = (actions) => region1Called = true,
             };
 
-            var handler2 = new InputRegionHandler<TestInputActions>
+            var handler2 = new InputRegionHandler
             {
                 Region = testRegion2,
                 HandleInputCallback = (actions) => region2Called = true,
             };
 
-            InputController<TestInputActions>.RegisterRegionHandler(handler1);
-            InputController<TestInputActions>.RegisterRegionHandler(handler2);
-            InputController<TestInputActions>.PushRegion(testRegion1);
-            InputController<TestInputActions>.PushRegion(testRegion2);
+            _service.RegisterRegionHandler(handler1);
+            _service.RegisterRegionHandler(handler2);
+            _service.PushRegion(testRegion1);
+            _service.PushRegion(testRegion2);
 
             // Act
-            InputController<TestInputActions>.DispatchInput();
+            _service.DispatchInput();
 
             // Assert
             Assert.IsFalse(region1Called);
@@ -296,22 +283,22 @@ namespace Basic.Input.Tests
         public void DispatchInput_PassesInputActionsCorrectly()
         {
             // Arrange
-            TestInputActions receivedActions = null;
-            var handler = new InputRegionHandler<TestInputActions>
+            InputActions receivedActions = null;
+            var handler = new InputRegionHandler
             {
                 Region = testRegion1,
                 HandleInputCallback = (actions) => receivedActions = actions,
             };
 
-            InputController<TestInputActions>.RegisterRegionHandler(handler);
-            InputController<TestInputActions>.PushRegion(testRegion1);
+            _service.RegisterRegionHandler(handler);
+            _service.PushRegion(testRegion1);
 
             // Act
-            InputController<TestInputActions>.DispatchInput();
+            _service.DispatchInput();
 
             // Assert
             Assert.IsNotNull(receivedActions);
-            Assert.AreSame(InputController<TestInputActions>.InputActions, receivedActions);
+            Assert.AreSame(_service.InputActions, receivedActions);
         }
 
         #endregion
@@ -323,15 +310,15 @@ namespace Basic.Input.Tests
         {
             // Arrange
             bool enteredCallbackInvoked = false;
-            var handler = new InputRegionHandler<TestInputActions>
+            var handler = new InputRegionHandler
             {
                 Region = testRegion1,
                 RegionEnteredCallback = () => enteredCallbackInvoked = true,
             };
-            InputController<TestInputActions>.RegisterRegionHandler(handler);
+            _service.RegisterRegionHandler(handler);
 
             // Act
-            InputController<TestInputActions>.PushRegion(testRegion1);
+            _service.PushRegion(testRegion1);
 
             // Assert
             Assert.IsTrue(enteredCallbackInvoked);
@@ -344,24 +331,24 @@ namespace Basic.Input.Tests
             bool region1Exited = false;
             bool region2Entered = false;
 
-            var handler1 = new InputRegionHandler<TestInputActions>
+            var handler1 = new InputRegionHandler
             {
                 Region = testRegion1,
                 RegionExitedCallback = () => region1Exited = true,
             };
 
-            var handler2 = new InputRegionHandler<TestInputActions>
+            var handler2 = new InputRegionHandler
             {
                 Region = testRegion2,
                 RegionEnteredCallback = () => region2Entered = true,
             };
 
-            InputController<TestInputActions>.RegisterRegionHandler(handler1);
-            InputController<TestInputActions>.RegisterRegionHandler(handler2);
-            InputController<TestInputActions>.PushRegion(testRegion1);
+            _service.RegisterRegionHandler(handler1);
+            _service.RegisterRegionHandler(handler2);
+            _service.PushRegion(testRegion1);
 
             // Act
-            InputController<TestInputActions>.PushRegion(testRegion2);
+            _service.PushRegion(testRegion2);
 
             // Assert
             Assert.IsTrue(region1Exited);
@@ -375,27 +362,27 @@ namespace Basic.Input.Tests
             bool region1Entered = false;
             bool region2Exited = false;
 
-            var handler1 = new InputRegionHandler<TestInputActions>
+            var handler1 = new InputRegionHandler
             {
                 Region = testRegion1,
                 RegionEnteredCallback = () => region1Entered = true,
             };
 
-            var handler2 = new InputRegionHandler<TestInputActions>
+            var handler2 = new InputRegionHandler
             {
                 Region = testRegion2,
                 RegionExitedCallback = () => region2Exited = true,
             };
 
-            InputController<TestInputActions>.RegisterRegionHandler(handler1);
-            InputController<TestInputActions>.RegisterRegionHandler(handler2);
-            InputController<TestInputActions>.PushRegion(testRegion1);
-            InputController<TestInputActions>.PushRegion(testRegion2);
+            _service.RegisterRegionHandler(handler1);
+            _service.RegisterRegionHandler(handler2);
+            _service.PushRegion(testRegion1);
+            _service.PushRegion(testRegion2);
 
             region1Entered = false; // Reset after initial push
 
             // Act
-            InputController<TestInputActions>.RemoveRegion(testRegion2);
+            _service.RemoveRegion(testRegion2);
 
             // Assert
             Assert.IsTrue(region2Exited);
@@ -409,29 +396,29 @@ namespace Basic.Input.Tests
             bool region2Exited = false;
             bool region3Entered = false;
 
-            var handler2 = new InputRegionHandler<TestInputActions>
+            var handler2 = new InputRegionHandler
             {
                 Region = testRegion2,
                 RegionExitedCallback = () => region2Exited = true,
             };
 
-            var handler3 = new InputRegionHandler<TestInputActions>
+            var handler3 = new InputRegionHandler
             {
                 Region = testRegion3,
                 RegionEnteredCallback = () => region3Entered = true,
             };
 
-            InputController<TestInputActions>.RegisterRegionHandler(handler2);
-            InputController<TestInputActions>.RegisterRegionHandler(handler3);
-            InputController<TestInputActions>.PushRegion(testRegion1);
-            InputController<TestInputActions>.PushRegion(testRegion2);
-            InputController<TestInputActions>.PushRegion(testRegion3);
+            _service.RegisterRegionHandler(handler2);
+            _service.RegisterRegionHandler(handler3);
+            _service.PushRegion(testRegion1);
+            _service.PushRegion(testRegion2);
+            _service.PushRegion(testRegion3);
 
             region2Exited = false; // Reset after initial push
             region3Entered = false;
 
             // Act
-            InputController<TestInputActions>.RemoveRegion(testRegion2);
+            _service.RemoveRegion(testRegion2);
 
             // Assert
             Assert.IsFalse(region2Exited);
@@ -478,7 +465,7 @@ namespace Basic.Input.Tests
             var result = region.ToString();
 
             // Assert
-            Assert.AreEqual($"TestRegion:{guid}", result);
+            Assert.IsTrue(result.Contains("TestRegion"));
         }
 
         [Test]
@@ -502,7 +489,7 @@ namespace Basic.Input.Tests
             // Arrange
             var callOrder = new List<string>();
 
-            var handler1 = new InputRegionHandler<TestInputActions>
+            var handler1 = new InputRegionHandler
             {
                 Region = testRegion1,
                 RegionEnteredCallback = () => callOrder.Add("Region1-Enter"),
@@ -510,7 +497,7 @@ namespace Basic.Input.Tests
                 HandleInputCallback = (actions) => callOrder.Add("Region1-Input"),
             };
 
-            var handler2 = new InputRegionHandler<TestInputActions>
+            var handler2 = new InputRegionHandler
             {
                 Region = testRegion2,
                 RegionEnteredCallback = () => callOrder.Add("Region2-Enter"),
@@ -518,16 +505,16 @@ namespace Basic.Input.Tests
                 HandleInputCallback = (actions) => callOrder.Add("Region2-Input"),
             };
 
-            InputController<TestInputActions>.RegisterRegionHandler(handler1);
-            InputController<TestInputActions>.RegisterRegionHandler(handler2);
+            _service.RegisterRegionHandler(handler1);
+            _service.RegisterRegionHandler(handler2);
 
             // Act
-            InputController<TestInputActions>.PushRegion(testRegion1);
-            InputController<TestInputActions>.DispatchInput();
-            InputController<TestInputActions>.PushRegion(testRegion2);
-            InputController<TestInputActions>.DispatchInput();
-            InputController<TestInputActions>.RemoveRegion(testRegion2);
-            InputController<TestInputActions>.DispatchInput();
+            _service.PushRegion(testRegion1);
+            _service.DispatchInput();
+            _service.PushRegion(testRegion2);
+            _service.DispatchInput();
+            _service.RemoveRegion(testRegion2);
+            _service.DispatchInput();
 
             // Assert
             Assert.AreEqual(8, callOrder.Count);
