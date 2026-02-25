@@ -1,0 +1,16 @@
+{
+    "name": "Basic.Input",
+    "rootNamespace": "",
+    "references": [
+        "GUID:e885ce0516d5c6e47a565977343e0849"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

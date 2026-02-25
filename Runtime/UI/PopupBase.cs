@@ -1,4 +1,3 @@
-using Basic.Input;
 using UnityEngine;
 
 namespace Basic.UI
@@ -7,8 +6,6 @@ namespace Basic.UI
     {
         [SerializeField]
         protected GameObject mainGameObject;
-
-        protected virtual InputRegion InputRegion => null;
 
         public virtual void Open()
         {
