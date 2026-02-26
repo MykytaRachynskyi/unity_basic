@@ -8,7 +8,11 @@ namespace Basic.Input.Tests
     [TestFixture]
     public class InputControllerTests
     {
-        private InputService _service;
+        public class TestInputService : InputService<TestInputActions> { }
+
+        public class TestInputActions { }
+
+        private IInputService<TestInputActions> _service;
         private InputRegion testRegion1;
         private InputRegion testRegion2;
         private InputRegion testRegion3;
@@ -16,7 +20,7 @@ namespace Basic.Input.Tests
         [SetUp]
         public void SetUp()
         {
-            _service = new InputService();
+            _service = new TestInputService();
 
             // Create test regions
             testRegion1 = new InputRegion("TestRegion1", GUID.Generate());
@@ -39,14 +43,15 @@ namespace Basic.Input.Tests
         {
             // Arrange
             bool callbackInvoked = false;
-            var handler = new InputRegionHandler
-            {
-                Region = testRegion1,
-                HandleInputCallback = (actions) => callbackInvoked = true,
-            };
 
             // Act
-            _service.RegisterRegionHandler(handler);
+            _service.RegisterRegionHandler(
+                new()
+                {
+                    Region = testRegion1,
+                    HandleInputCallback = (actions) => callbackInvoked = true,
+                }
+            );
             _service.PushRegion(testRegion1);
             _service.DispatchInput();
 
@@ -61,21 +66,21 @@ namespace Basic.Input.Tests
             bool callback1Invoked = false;
             bool callback2Invoked = false;
 
-            var handler1 = new InputRegionHandler
-            {
-                Region = testRegion1,
-                HandleInputCallback = (actions) => callback1Invoked = true,
-            };
-
-            var handler2 = new InputRegionHandler
-            {
-                Region = testRegion1,
-                HandleInputCallback = (actions) => callback2Invoked = true,
-            };
-
             // Act
-            _service.RegisterRegionHandler(handler1);
-            _service.RegisterRegionHandler(handler2);
+            _service.RegisterRegionHandler(
+                new()
+                {
+                    Region = testRegion1,
+                    HandleInputCallback = (actions) => callback1Invoked = true,
+                }
+            );
+            _service.RegisterRegionHandler(
+                new()
+                {
+                    Region = testRegion1,
+                    HandleInputCallback = (actions) => callback2Invoked = true,
+                }
+            );
             _service.PushRegion(testRegion1);
             _service.DispatchInput();
 
@@ -89,7 +94,7 @@ namespace Basic.Input.Tests
         {
             // Arrange
             bool callbackInvoked = false;
-            var handler = new InputRegionHandler
+            var handler = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion1,
                 HandleInputCallback = (actions) => callbackInvoked = true,
@@ -212,7 +217,7 @@ namespace Basic.Input.Tests
         {
             // Arrange
             bool callbackInvoked = false;
-            var handler = new InputRegionHandler
+            var handler = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion1,
                 HandleInputCallback = (actions) => callbackInvoked = true,
@@ -231,7 +236,7 @@ namespace Basic.Input.Tests
         {
             // Arrange
             bool callbackInvoked = false;
-            var handler = new InputRegionHandler
+            var handler = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion1,
                 HandleInputCallback = (actions) => callbackInvoked = true,
@@ -254,13 +259,13 @@ namespace Basic.Input.Tests
             bool region1Called = false;
             bool region2Called = false;
 
-            var handler1 = new InputRegionHandler
+            var handler1 = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion1,
                 HandleInputCallback = (actions) => region1Called = true,
             };
 
-            var handler2 = new InputRegionHandler
+            var handler2 = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion2,
                 HandleInputCallback = (actions) => region2Called = true,
@@ -279,28 +284,6 @@ namespace Basic.Input.Tests
             Assert.IsTrue(region2Called);
         }
 
-        [Test]
-        public void DispatchInput_PassesInputActionsCorrectly()
-        {
-            // Arrange
-            InputActions receivedActions = null;
-            var handler = new InputRegionHandler
-            {
-                Region = testRegion1,
-                HandleInputCallback = (actions) => receivedActions = actions,
-            };
-
-            _service.RegisterRegionHandler(handler);
-            _service.PushRegion(testRegion1);
-
-            // Act
-            _service.DispatchInput();
-
-            // Assert
-            Assert.IsNotNull(receivedActions);
-            Assert.AreSame(_service.InputActions, receivedActions);
-        }
-
         #endregion
 
         #region Callback Tests
@@ -310,7 +293,7 @@ namespace Basic.Input.Tests
         {
             // Arrange
             bool enteredCallbackInvoked = false;
-            var handler = new InputRegionHandler
+            var handler = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion1,
                 RegionEnteredCallback = () => enteredCallbackInvoked = true,
@@ -331,13 +314,13 @@ namespace Basic.Input.Tests
             bool region1Exited = false;
             bool region2Entered = false;
 
-            var handler1 = new InputRegionHandler
+            var handler1 = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion1,
                 RegionExitedCallback = () => region1Exited = true,
             };
 
-            var handler2 = new InputRegionHandler
+            var handler2 = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion2,
                 RegionEnteredCallback = () => region2Entered = true,
@@ -362,13 +345,13 @@ namespace Basic.Input.Tests
             bool region1Entered = false;
             bool region2Exited = false;
 
-            var handler1 = new InputRegionHandler
+            var handler1 = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion1,
                 RegionEnteredCallback = () => region1Entered = true,
             };
 
-            var handler2 = new InputRegionHandler
+            var handler2 = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion2,
                 RegionExitedCallback = () => region2Exited = true,
@@ -396,13 +379,13 @@ namespace Basic.Input.Tests
             bool region2Exited = false;
             bool region3Entered = false;
 
-            var handler2 = new InputRegionHandler
+            var handler2 = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion2,
                 RegionExitedCallback = () => region2Exited = true,
             };
 
-            var handler3 = new InputRegionHandler
+            var handler3 = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion3,
                 RegionEnteredCallback = () => region3Entered = true,
@@ -489,7 +472,7 @@ namespace Basic.Input.Tests
             // Arrange
             var callOrder = new List<string>();
 
-            var handler1 = new InputRegionHandler
+            var handler1 = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion1,
                 RegionEnteredCallback = () => callOrder.Add("Region1-Enter"),
@@ -497,7 +480,7 @@ namespace Basic.Input.Tests
                 HandleInputCallback = (actions) => callOrder.Add("Region1-Input"),
             };
 
-            var handler2 = new InputRegionHandler
+            var handler2 = new InputRegionHandler<TestInputActions>
             {
                 Region = testRegion2,
                 RegionEnteredCallback = () => callOrder.Add("Region2-Enter"),

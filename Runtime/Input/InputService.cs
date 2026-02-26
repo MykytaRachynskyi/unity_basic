@@ -3,11 +3,6 @@ using UnityEngine;
 
 namespace Basic.Input
 {
-    public partial class InputActions
-    {
-        //
-    }
-
     public class InputRegions
     {
         public static readonly InputRegion BLOCKED = new("Blocked", GUID.Generate());
@@ -38,20 +33,19 @@ namespace Basic.Input
         public static bool operator !=(InputRegion a, InputRegion b) => !a.Equals(b);
     }
 
-    public struct InputRegionHandler
+    public struct InputRegionHandler<TInputActions>
     {
         public InputRegion Region;
-        public System.Action<InputActions> HandleInputCallback;
+        public System.Action<TInputActions> HandleInputCallback;
         public System.Action RegionEnteredCallback;
         public System.Action RegionExitedCallback;
     }
 
-    public interface IInputService
+    public interface IInputService<TInputActions>
     {
-        InputActions InputActions { get; }
         IReadOnlyList<InputRegion> RegionStack { get; }
-        void RegisterRegionHandler(InputRegionHandler handler);
-        void DeregisterRegionHandler(InputRegionHandler handler);
+        void RegisterRegionHandler(InputRegionHandler<TInputActions> handler);
+        void DeregisterRegionHandler(InputRegionHandler<TInputActions> handler);
         void DispatchInput();
         void PushRegion(InputRegion region);
         void RemoveRegion(InputRegion region);
@@ -59,19 +53,21 @@ namespace Basic.Input
         void ClearRegions();
     }
 
-    public class InputService : IInputService
+    public abstract class InputService<TInputActions> : IInputService<TInputActions>
+        where TInputActions : new()
     {
         // Private state
-        private readonly Dictionary<GUID, List<InputRegionHandler>> _regionHandlers = new();
+        private readonly Dictionary<GUID, List<InputRegionHandler<TInputActions>>> _regionHandlers =
+            new();
         private readonly List<InputRegion> _regionStack = new(8);
-        private readonly InputActions _inputActions = new();
+        private readonly TInputActions _inputActions = new();
 
         // Public getters
-        public InputActions InputActions => _inputActions;
+        public TInputActions InputActions => _inputActions;
         public IReadOnlyList<InputRegion> RegionStack => _regionStack;
 
         // Public API
-        public void RegisterRegionHandler(InputRegionHandler handler)
+        public void RegisterRegionHandler(InputRegionHandler<TInputActions> handler)
         {
             if (!_regionHandlers.ContainsKey(handler.Region.ID))
             {
@@ -93,7 +89,7 @@ namespace Basic.Input
             }
         }
 
-        public void DeregisterRegionHandler(InputRegionHandler handler)
+        public void DeregisterRegionHandler(InputRegionHandler<TInputActions> handler)
         {
             if (_regionHandlers.TryGetValue(handler.Region.ID, out var handlerList))
             {
