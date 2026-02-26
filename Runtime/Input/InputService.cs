@@ -57,10 +57,12 @@ namespace Basic.Input
         where TInputActions : new()
     {
         // Private state
-        private readonly Dictionary<GUID, List<InputRegionHandler<TInputActions>>> _regionHandlers =
-            new();
-        private readonly List<InputRegion> _regionStack = new(8);
-        private readonly TInputActions _inputActions = new();
+        protected readonly Dictionary<
+            GUID,
+            List<InputRegionHandler<TInputActions>>
+        > _regionHandlers = new();
+        protected readonly List<InputRegion> _regionStack = new(8);
+        protected readonly TInputActions _inputActions = new();
 
         // Public getters
         public TInputActions InputActions => _inputActions;
