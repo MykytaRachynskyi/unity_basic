@@ -15,6 +15,12 @@ namespace Basic.Input
         public GUID ID;
         public string Name;
 
+        public InputRegion(string name)
+        {
+            Name = name;
+            ID = GUID.Generate();
+        }
+
         public InputRegion(string name, GUID id)
         {
             Name = name;
