@@ -9,6 +9,13 @@ namespace Basic
         public void EDITOR_SetGUID(GUID guid)
         {
             GUID = guid;
+
+#if UNITY_EDITOR
+            if (this is UnityEngine.ScriptableObject so)
+            {
+                UnityEditor.EditorUtility.SetDirty(so);
+            }
+#endif
         }
     }
 }
