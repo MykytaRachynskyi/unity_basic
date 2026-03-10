@@ -92,6 +92,68 @@ namespace Basic
             Emit(LogLevel.Fatal, message, ModuleNameResolver.Resolve(filePath));
         }
 
+        // ───────────────────────── Exception (always compiled) ─────────────────────────
+
+        [HideInCallstack]
+        public static void Exception(Exception exception)
+        {
+            if (exception == null)
+                return;
+
+            var module = ModuleNameResolver.ResolveFromException(exception);
+
+            EnsureInitialized();
+
+            var entry = new LogEntry(
+                LogLevel.Error,
+                exception.Message,
+                module,
+                DateTime.Now.ToString("HH:mm:ss.fff"),
+                Time.frameCount,
+                exception,
+                false
+            );
+
+            lock (SinkLock)
+            {
+                for (var i = 0; i < Sinks.Count; i++)
+                    Sinks[i].Emit(in entry);
+            }
+        }
+
+        // ───────────────────────── Assert ─────────────────────────
+
+        [HideInCallstack]
+        [Conditional("ENABLE_LOGGING")]
+        public static void Assert(bool condition, string message = "", [CallerFilePath] string filePath = "")
+        {
+            if (condition)
+                return;
+
+            var module = ModuleNameResolver.Resolve(filePath);
+            var assertMessage = string.IsNullOrEmpty(message)
+                ? "Assertion Failed"
+                : $"Assertion Failed: {message}";
+
+            EnsureInitialized();
+
+            var entry = new LogEntry(
+                LogLevel.Error,
+                assertMessage,
+                module,
+                DateTime.Now.ToString("HH:mm:ss.fff"),
+                Time.frameCount,
+                null,
+                true
+            );
+
+            lock (SinkLock)
+            {
+                for (var i = 0; i < Sinks.Count; i++)
+                    Sinks[i].Emit(in entry);
+            }
+        }
+
         // ───────────────────────── Internal ─────────────────────────
 
         [HideInCallstack]

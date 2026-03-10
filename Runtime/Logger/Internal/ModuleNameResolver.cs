@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 
 namespace Basic.Logger
@@ -10,6 +12,22 @@ namespace Basic.Logger
         private const string ModulesFolder = "Modules";
         private const char ForwardSlash = '/';
         private const char BackSlash = '\\';
+
+        public static string ResolveFromException(Exception exception)
+        {
+            if (exception == null)
+                return "Unknown";
+
+            var trace = new StackTrace(exception, true);
+            for (var i = 0; i < trace.FrameCount; i++)
+            {
+                var fileName = trace.GetFrame(i)?.GetFileName();
+                if (!string.IsNullOrEmpty(fileName))
+                    return Resolve(fileName);
+            }
+
+            return "Unknown";
+        }
 
         public static string Resolve(string callerFilePath)
         {

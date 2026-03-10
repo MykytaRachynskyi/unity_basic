@@ -30,6 +30,9 @@ namespace Basic.Logger
 			lock (_writer)
 			{
 				_writer.WriteLine(line);
+
+				if (entry.Exception != null)
+					_writer.WriteLine(entry.Exception.ToString());
 			}
 		}
 

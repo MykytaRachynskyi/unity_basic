@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -9,6 +10,19 @@ namespace Basic.Logger
         public void Emit(in LogEntry entry)
         {
             var formatted = Format(in entry);
+
+            if (entry.Exception != null)
+            {
+                EmitError(formatted);
+                EmitException(entry.Exception);
+                return;
+            }
+
+            if (entry.IsAssertion)
+            {
+                EmitAssertion(formatted);
+                return;
+            }
 
             switch (entry.Level)
             {
@@ -37,6 +51,12 @@ namespace Basic.Logger
 
         [HideInCallstack]
         private static void EmitError(string message) => Debug.LogError(message);
+
+        [HideInCallstack]
+        private static void EmitException(Exception exception) => Debug.LogException(exception);
+
+        [HideInCallstack]
+        private static void EmitAssertion(string message) => Debug.LogAssertion(message);
 
         private static string Format(in LogEntry entry)
         {
