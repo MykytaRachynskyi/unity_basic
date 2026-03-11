@@ -1,6 +1,6 @@
 {
   "name": "com.arcticlime.unitybasic",
-  "version": "0.0.60",
+  "version": "0.0.61",
   "displayName": "ArcticLime UnityBasic",
   "description": "A set of useful tools for Unity development.",
   "unity": "6000.0",
@@ -12,6 +12,7 @@
   "dependencies": {
     "com.unity.addressables": "2.7.0",
     "com.unity.inputsystem": "1.14.1",
-    "com.unity.localization": "1.5.7"
+    "com.unity.localization": "1.5.7",
+    "com.unity.nuget.newtonsoft-json": "3.2.2"
   }
 }
