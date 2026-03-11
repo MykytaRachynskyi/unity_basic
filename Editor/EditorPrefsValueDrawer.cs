@@ -11,44 +11,88 @@ namespace Basic
     [InitializeOnLoad]
     public static class EditorPrefsValueDrawer
     {
+        struct FieldEntry
+        {
+            public FieldInfo[] OwnerPath;
+            public FieldInfo Field;
+            public string Key;
+        }
+
         static readonly Dictionary<string, object> _cache = new();
-        static readonly Dictionary<Type, FieldInfo[]> _fieldsPerType = new();
+        static readonly Dictionary<Type, FieldEntry[]> _entriesPerType = new();
 
         static EditorPrefsValueDrawer()
         {
             NaughtyInspector.RegisterAdditionalDrawer(DrawTarget);
         }
 
-        static FieldInfo[] GetFields(Type type)
+        static FieldEntry[] GetEntries(Type type)
         {
-            if (!_fieldsPerType.TryGetValue(type, out var fields))
+            if (!_entriesPerType.TryGetValue(type, out var entries))
             {
-                var list = new List<FieldInfo>();
-                var t = type;
-                while (t != null)
-                {
-                    foreach (var f in t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-                        if (f.GetCustomAttribute<EditorPrefsValueAttribute>() != null)
-                            list.Add(f);
-                    t = t.BaseType;
-                }
-                fields = list.ToArray();
-                _fieldsPerType[type] = fields;
+                var list = new List<FieldEntry>();
+                CollectFields(type, Array.Empty<FieldInfo>(), list, new HashSet<Type>());
+                entries = list.ToArray();
+                _entriesPerType[type] = entries;
             }
-            return fields;
+            return entries;
+        }
+
+        static void CollectFields(Type type, FieldInfo[] pathSoFar, List<FieldEntry> results, HashSet<Type> visited)
+        {
+            if (type == null || !visited.Add(type))
+                return;
+
+            var t = type;
+            while (t != null)
+            {
+                foreach (var f in t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                {
+                    var attr = f.GetCustomAttribute<EditorPrefsValueAttribute>();
+                    if (attr != null)
+                    {
+                        results.Add(new FieldEntry { OwnerPath = pathSoFar, Field = f, Key = attr.Key });
+                    }
+                    else if (f.FieldType.IsClass || (f.FieldType.IsValueType && !f.FieldType.IsPrimitive && !f.FieldType.IsEnum))
+                    {
+                        if (f.FieldType.GetCustomAttribute<SerializableAttribute>() != null
+                            && !f.FieldType.Namespace?.StartsWith("System") == true
+                            && !f.FieldType.Namespace?.StartsWith("UnityEngine") == true)
+                        {
+                            var newPath = new FieldInfo[pathSoFar.Length + 1];
+                            pathSoFar.CopyTo(newPath, 0);
+                            newPath[pathSoFar.Length] = f;
+                            CollectFields(f.FieldType, newPath, results, visited);
+                        }
+                    }
+                }
+                t = t.BaseType;
+            }
+        }
+
+        static object ResolveOwner(object root, FieldInfo[] path)
+        {
+            object current = root;
+            foreach (var f in path)
+            {
+                current = f.GetValue(current);
+                if (current == null) return null;
+            }
+            return current;
         }
 
         static void DrawTarget(UnityEngine.Object target)
         {
-            var fields = GetFields(target.GetType());
-            foreach (var field in fields)
+            var entries = GetEntries(target.GetType());
+            foreach (var entry in entries)
             {
-                var attr = field.GetCustomAttribute<EditorPrefsValueAttribute>();
-                DrawField(target, field, attr.Key);
+                var owner = ResolveOwner(target, entry.OwnerPath);
+                if (owner != null)
+                    DrawField(owner, entry.Field, entry.Key);
             }
         }
 
-        static void DrawField(UnityEngine.Object target, FieldInfo field, string key)
+        static void DrawField(object owner, FieldInfo field, string key)
         {
             if (!_cache.ContainsKey(key))
             {
@@ -61,16 +105,16 @@ namespace Basic
                     }
                     catch
                     {
-                        _cache[key] = field.GetValue(target);
+                        _cache[key] = field.GetValue(owner);
                     }
                 }
                 else
                 {
-                    _cache[key] = field.GetValue(target);
+                    _cache[key] = field.GetValue(owner);
                 }
             }
 
-            field.SetValue(target, _cache[key]);
+            field.SetValue(owner, _cache[key]);
 
             string label = ObjectNames.NicifyVariableName(field.Name);
             object current = _cache[key];
@@ -79,7 +123,7 @@ namespace Basic
             if (!Equals(current, newValue))
             {
                 _cache[key] = newValue;
-                field.SetValue(target, newValue);
+                field.SetValue(owner, newValue);
                 EditorPrefs.SetString(key, JsonConvert.SerializeObject(newValue));
             }
         }
