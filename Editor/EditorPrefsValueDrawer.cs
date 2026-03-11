@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Newtonsoft.Json;
@@ -6,97 +7,94 @@ using UnityEngine;
 
 namespace Basic
 {
-    [CustomPropertyDrawer(typeof(EditorPrefsValueAttribute))]
-    public class EditorPrefsValueDrawer : PropertyDrawer
+    public static class EditorPrefsValueDrawer
     {
-        static readonly HashSet<string> _loaded = new();
+        static readonly Dictionary<string, object> _cache = new();
 
-        public override float GetPropertyHeight(SerializedProperty property, GUIContent label) =>
-            EditorGUI.GetPropertyHeight(property, label, true);
-
-        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        public static void DrawFields(UnityEngine.Object target, IEnumerable<FieldInfo> fields)
         {
-            var key = ((EditorPrefsValueAttribute)attribute).Key;
-            string uid =
-                $"{property.serializedObject.targetObject.GetInstanceID()}.{property.propertyPath}";
-
-            if (_loaded.Add(uid))
-                Load(property, key);
-
-            EditorGUI.BeginChangeCheck();
-            EditorGUI.PropertyField(position, property, label, true);
-
-            if (EditorGUI.EndChangeCheck())
+            foreach (var field in fields)
             {
-                property.serializedObject.ApplyModifiedPropertiesWithoutUndo();
-                Save(property, key);
+                var attr = field.GetCustomAttribute<EditorPrefsValueAttribute>();
+                if (attr == null) continue;
+                DrawField(target, field, attr.Key);
             }
         }
 
-        void Load(SerializedProperty property, string key)
+        static void DrawField(UnityEngine.Object target, FieldInfo field, string key)
         {
-            if (!EditorPrefs.HasKey(key))
-                return;
-
-            var owner = ResolveOwner(property);
-            var value = JsonConvert.DeserializeObject(
-                EditorPrefs.GetString(key),
-                fieldInfo.FieldType
-            );
-            fieldInfo.SetValue(owner, value);
-            property.serializedObject.Update();
-        }
-
-        void Save(SerializedProperty property, string key)
-        {
-            var owner = ResolveOwner(property);
-            EditorPrefs.SetString(key, JsonConvert.SerializeObject(fieldInfo.GetValue(owner)));
-        }
-
-        // Walks the propertyPath to find the object that directly owns this field,
-        // which may be a nested object rather than the root targetObject.
-        object ResolveOwner(SerializedProperty property)
-        {
-            object current = property.serializedObject.targetObject;
-
-            // Strip the final field name — we want the owner, not the value itself
-            var path = property.propertyPath.Replace(".Array.data[", "[");
-            var parts = path.Split('.');
-
-            for (int i = 0; i < parts.Length - 1; i++)
+            if (!_cache.ContainsKey(key))
             {
-                var part = parts[i];
-                if (part.EndsWith("]"))
+                if (EditorPrefs.HasKey(key))
                 {
-                    int bracket = part.IndexOf('[');
-                    int index = int.Parse(part.Substring(bracket + 1, part.Length - bracket - 2));
-                    var list = (System.Collections.IList)
-                        GetField(current, part.Substring(0, bracket)).GetValue(current);
-                    current = list[index];
+                    try
+                    {
+                        _cache[key] = JsonConvert.DeserializeObject(
+                            EditorPrefs.GetString(key), field.FieldType);
+                    }
+                    catch
+                    {
+                        _cache[key] = field.GetValue(target);
+                    }
                 }
                 else
                 {
-                    current = GetField(current, part).GetValue(current);
+                    _cache[key] = field.GetValue(target);
                 }
             }
 
-            return current;
+            field.SetValue(target, _cache[key]);
+
+            string label = ObjectNames.NicifyVariableName(field.Name);
+            object current = _cache[key];
+            object newValue = DrawEditableField(current, field.FieldType, label);
+
+            if (!Equals(current, newValue))
+            {
+                _cache[key] = newValue;
+                field.SetValue(target, newValue);
+                EditorPrefs.SetString(key, JsonConvert.SerializeObject(newValue));
+            }
         }
 
-        static FieldInfo GetField(object obj, string name)
+        static object DrawEditableField(object value, Type type, string label)
         {
-            var type = obj.GetType();
-            while (type != null)
-            {
-                var f = type.GetField(
-                    name,
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                );
-                if (f != null)
-                    return f;
-                type = type.BaseType;
-            }
-            throw new System.Exception($"Field '{name}' not found on {obj.GetType()}");
+            if (type == typeof(bool))
+                return EditorGUILayout.Toggle(label, (bool)(value ?? false));
+            if (type == typeof(int))
+                return EditorGUILayout.IntField(label, (int)(value ?? 0));
+            if (type == typeof(float))
+                return EditorGUILayout.FloatField(label, (float)(value ?? 0f));
+            if (type == typeof(string))
+                return EditorGUILayout.TextField(label, (string)(value ?? ""));
+            if (type == typeof(double))
+                return EditorGUILayout.DoubleField(label, (double)(value ?? 0.0));
+            if (type == typeof(long))
+                return EditorGUILayout.LongField(label, (long)(value ?? 0L));
+            if (type == typeof(Vector2))
+                return EditorGUILayout.Vector2Field(label, (Vector2)(value ?? Vector2.zero));
+            if (type == typeof(Vector3))
+                return EditorGUILayout.Vector3Field(label, (Vector3)(value ?? Vector3.zero));
+            if (type == typeof(Vector4))
+                return EditorGUILayout.Vector4Field(label, (Vector4)(value ?? Vector4.zero));
+            if (type == typeof(Vector2Int))
+                return EditorGUILayout.Vector2IntField(label, (Vector2Int)(value ?? Vector2Int.zero));
+            if (type == typeof(Vector3Int))
+                return EditorGUILayout.Vector3IntField(label, (Vector3Int)(value ?? Vector3Int.zero));
+            if (type == typeof(Color))
+                return EditorGUILayout.ColorField(label, (Color)(value ?? Color.white));
+            if (type == typeof(Rect))
+                return EditorGUILayout.RectField(label, (Rect)(value ?? Rect.zero));
+            if (type == typeof(RectInt))
+                return EditorGUILayout.RectIntField(label, (RectInt)(value ?? new RectInt()));
+            if (type == typeof(Bounds))
+                return EditorGUILayout.BoundsField(label, (Bounds)(value ?? new Bounds()));
+            if (type.IsEnum)
+                return EditorGUILayout.EnumPopup(label, (Enum)(value ?? Enum.ToObject(type, 0)));
+
+            EditorGUILayout.HelpBox(
+                $"{label}: EditorPrefsValue doesn't support {type.Name}", MessageType.Warning);
+            return value;
         }
     }
 }

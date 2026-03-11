@@ -1,8 +1,9 @@
-using UnityEngine;
+using System;
 
 namespace Basic
 {
-	public class EditorPrefsValueAttribute : PropertyAttribute
+	[AttributeUsage(AttributeTargets.Field)]
+	public class EditorPrefsValueAttribute : Attribute
 	{
 		public readonly string Key;
 		public EditorPrefsValueAttribute(string key) => Key = key;
