@@ -1,7 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Basic;
 using UnityEditor;
 using UnityEngine;
 
@@ -13,18 +13,17 @@ namespace NaughtyAttributes.Editor
     {
         private List<SerializedProperty> _serializedProperties = new List<SerializedProperty>();
         private IEnumerable<FieldInfo> _nonSerializedFields;
-        private IEnumerable<FieldInfo> _editorPrefsFields;
         private IEnumerable<PropertyInfo> _nativeProperties;
         private IEnumerable<MethodInfo> _methods;
         private Dictionary<string, SavedBool> _foldouts = new Dictionary<string, SavedBool>();
+
+        private static readonly List<Action<UnityEngine.Object>> _additionalDrawers = new();
+        public static void RegisterAdditionalDrawer(Action<UnityEngine.Object> drawer) => _additionalDrawers.Add(drawer);
 
         protected virtual void OnEnable()
         {
             _nonSerializedFields = ReflectionUtility.GetAllFields(
                 target, f => f.GetCustomAttributes(typeof(ShowNonSerializedFieldAttribute), true).Length > 0);
-
-            _editorPrefsFields = ReflectionUtility.GetAllFields(
-                target, f => f.GetCustomAttributes(typeof(EditorPrefsValueAttribute), true).Length > 0);
 
             _nativeProperties = ReflectionUtility.GetAllProperties(
                 target, p => p.GetCustomAttributes(typeof(ShowNativePropertyAttribute), true).Length > 0);
@@ -53,9 +52,11 @@ namespace NaughtyAttributes.Editor
             }
 
             DrawNonSerializedFields();
-            DrawEditorPrefsFields();
             DrawNativeProperties();
             DrawButtons();
+
+            foreach (var drawer in _additionalDrawers)
+                drawer(target);
         }
 
         protected void GetSerializedProperties(ref List<SerializedProperty> outSerializedProperties)
@@ -156,12 +157,6 @@ namespace NaughtyAttributes.Editor
                     NaughtyEditorGUI.NonSerializedField_Layout(serializedObject.targetObject, field);
                 }
             }
-        }
-
-        protected void DrawEditorPrefsFields()
-        {
-            if (_editorPrefsFields.Any())
-                EditorPrefsValueDrawer.DrawFields(serializedObject.targetObject, _editorPrefsFields);
         }
 
         protected void DrawNativeProperties(bool drawHeader = false)

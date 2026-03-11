@@ -1,22 +1,49 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using NaughtyAttributes.Editor;
 using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
 
 namespace Basic
 {
+    [InitializeOnLoad]
     public static class EditorPrefsValueDrawer
     {
         static readonly Dictionary<string, object> _cache = new();
+        static readonly Dictionary<Type, FieldInfo[]> _fieldsPerType = new();
 
-        public static void DrawFields(UnityEngine.Object target, IEnumerable<FieldInfo> fields)
+        static EditorPrefsValueDrawer()
         {
+            NaughtyInspector.RegisterAdditionalDrawer(DrawTarget);
+        }
+
+        static FieldInfo[] GetFields(Type type)
+        {
+            if (!_fieldsPerType.TryGetValue(type, out var fields))
+            {
+                var list = new List<FieldInfo>();
+                var t = type;
+                while (t != null)
+                {
+                    foreach (var f in t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+                        if (f.GetCustomAttribute<EditorPrefsValueAttribute>() != null)
+                            list.Add(f);
+                    t = t.BaseType;
+                }
+                fields = list.ToArray();
+                _fieldsPerType[type] = fields;
+            }
+            return fields;
+        }
+
+        static void DrawTarget(UnityEngine.Object target)
+        {
+            var fields = GetFields(target.GetType());
             foreach (var field in fields)
             {
                 var attr = field.GetCustomAttribute<EditorPrefsValueAttribute>();
-                if (attr == null) continue;
                 DrawField(target, field, attr.Key);
             }
         }

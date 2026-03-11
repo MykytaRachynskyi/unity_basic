@@ -113,7 +113,7 @@ namespace Basic.Singleton
         private static bool LoadFromAssetDatabase(out ScriptableSingletonDatabase instance)
 #if UNITY_EDITOR
             =>
-            UnityEditorTools.EditorTools.TryLoadAssetFromAssetDatabase(out instance);
+            TryLoadAssetFromAssetDatabase(out instance);
 #else
         {
             instance = null;
@@ -128,6 +128,33 @@ namespace Basic.Singleton
             );
             instance = op.WaitForCompletion();
             return instance != null;
+        }
+
+        private static bool TryLoadAssetFromAssetDatabase<T>(out T obj)
+            where T : Object
+        {
+            obj = null;
+
+#if UNITY_EDITOR
+            var assetGUIDs = UnityEditor.AssetDatabase.FindAssets($"t: {typeof(T).Name}");
+            if (assetGUIDs == null || assetGUIDs.Length == 0)
+            {
+                return false;
+            }
+
+            foreach (var guid in assetGUIDs)
+            {
+                var path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                obj = UnityEditor.AssetDatabase.LoadAssetAtPath(path, typeof(T)) as T;
+
+                if (obj != null)
+                {
+                    return true;
+                }
+            }
+#endif
+
+            return false;
         }
     }
 }
