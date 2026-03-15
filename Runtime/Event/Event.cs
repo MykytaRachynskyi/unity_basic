@@ -22,7 +22,7 @@ namespace Basic
         {
             if (!allowDuplicateListeners && voidListeners.Contains(voidListener))
             {
-                Debug.LogError($"Trying to add listener that is already on the list!");
+                Log.Error($"Trying to add listener that is already on the list!");
             }
             else
             {
@@ -34,7 +34,7 @@ namespace Basic
         {
             if (!allowDuplicateListeners && oneTimeVoidListeners.Contains(voidListener))
             {
-                Debug.LogError($"Trying to add listener that is already on the list!");
+                Log.Error($"Trying to add listener that is already on the list!");
             }
             else
             {
@@ -146,7 +146,7 @@ namespace Basic
         {
             if (!allowDuplicateListeners && typedListeners.Contains(listener))
             {
-                Debug.LogError($"Trying to add listener that is already on the list!");
+                Log.Error($"Trying to add listener that is already on the list!");
             }
             else
             {
@@ -158,7 +158,7 @@ namespace Basic
         {
             if (!allowDuplicateListeners && typedOneTimeListeners.Contains(listener))
             {
-                Debug.LogError($"Trying to add listener that is already on the list!");
+                Log.Error($"Trying to add listener that is already on the list!");
             }
             else
             {
@@ -238,7 +238,7 @@ namespace Basic
         {
             if (!allowDuplicateListeners && typedListeners.Contains(listener))
             {
-                Debug.LogError($"Trying to add listener that is already on the list!");
+                Log.Error($"Trying to add listener that is already on the list!");
             }
             else
             {
@@ -273,7 +273,7 @@ namespace Basic
         {
             if (!allowDuplicateListeners && typedOneTimeListeners.Contains(listener))
             {
-                Debug.LogError($"Trying to add listener that is already on the list!");
+                Log.Error($"Trying to add listener that is already on the list!");
             }
             else
             {
@@ -355,7 +355,7 @@ namespace Basic
         {
             if (!allowDuplicateListeners && typedListeners.Contains(listener))
             {
-                Debug.LogError($"Trying to add listener that is already on the list!");
+                Log.Error($"Trying to add listener that is already on the list!");
             }
             else
             {
@@ -367,7 +367,7 @@ namespace Basic
         {
             if (!allowDuplicateListeners && typedOneTimeListeners.Contains(listener))
             {
-                Debug.LogError($"Trying to add listener that is already on the list!");
+                Log.Error($"Trying to add listener that is already on the list!");
             }
             else
             {
@@ -444,7 +444,7 @@ namespace Basic
         {
             if (!allowDuplicateListeners && typedListeners.Contains(listener))
             {
-                Debug.LogError($"Trying to add listener that is already on the list!");
+                Log.Error($"Trying to add listener that is already on the list!");
             }
             else
             {
@@ -456,7 +456,7 @@ namespace Basic
         {
             if (!allowDuplicateListeners && typedOneTimeListeners.Contains(listener))
             {
-                Debug.LogError($"Trying to add listener that is already on the list!");
+                Log.Error($"Trying to add listener that is already on the list!");
             }
             else
             {

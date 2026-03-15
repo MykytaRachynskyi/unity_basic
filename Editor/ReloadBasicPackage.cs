@@ -1,8 +1,8 @@
 #if UNITY_EDITOR
+using Basic;
 using UnityEditor;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
-using UnityEngine;
 
 namespace Unity.Editor.Example
 {
@@ -23,9 +23,9 @@ namespace Unity.Editor.Example
             if (Request.IsCompleted)
             {
                 if (Request.Status == StatusCode.Success)
-                    Debug.Log("Installed: " + Request.Result.packageId);
+                    Log.Info("Installed: " + Request.Result.packageId);
                 else if (Request.Status >= StatusCode.Failure)
-                    Debug.Log(Request.Error.message);
+                    Log.Error(Request.Error.message);
 
                 EditorApplication.update -= Progress;
             }

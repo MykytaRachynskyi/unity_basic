@@ -22,7 +22,7 @@ namespace Basic.Modules
             }
             else
             {
-                Debug.LogError("The provider has already been added to the module table.");
+                Log.Error("The provider has already been added to the module table.");
             }
         }
 
@@ -31,7 +31,7 @@ namespace Basic.Modules
         {
             if (!_modules.TryAdd(typeof(T).GetHashCode(), module))
             {
-                Debug.LogError($"Couldn't add module {typeof(T).Name} to the module table.");
+                Log.Error($"Couldn't add module {typeof(T).Name} to the module table.");
                 return null;
             }
 

@@ -64,7 +64,7 @@ namespace Basic.EventLoop
         {
             System.Text.StringBuilder sb = new();
             RecursivePlayerLoopPrint(PlayerLoop.GetCurrentPlayerLoop(), sb, 0);
-            Debug.Log(sb.ToString());
+            Log.Info(sb.ToString());
         }
 
         public static void CleanupGameLoop()

@@ -32,9 +32,7 @@ namespace Basic.Singleton
             {
                 if (!_singletonMap.TryGetValue(typeof(T).GetHashCode(), out var singleton))
                 {
-                    Debug.LogError(
-                        $"Singleton of type {typeof(T).Name} not found in singleton map!"
-                    );
+                    Log.Error($"Singleton of type {typeof(T).Name} not found in singleton map!");
                     return null;
                 }
 
@@ -90,7 +88,7 @@ namespace Basic.Singleton
                     {
                         if (!LoadFromAssetDatabase(out _instance))
                         {
-                            Debug.LogError(
+                            Log.Error(
                                 "Failed to load Scriptable Singleton Database from asset database."
                             );
                         }
@@ -99,7 +97,7 @@ namespace Basic.Singleton
                     {
                         if (!LoadFromAddressables(out _instance))
                         {
-                            Debug.LogError(
+                            Log.Error(
                                 "Failed to load Scriptable Singleton Database from addressables."
                             );
                         }
