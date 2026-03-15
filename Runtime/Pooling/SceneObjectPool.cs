@@ -31,7 +31,7 @@ namespace Basic.Pooling
         {
             if (prefab == null)
             {
-                Debug.LogError("ObjectPool.Init: Prefab cannot be null.");
+                Log.Error("ObjectPool.Init: Prefab cannot be null.");
                 return null;
             }
 
@@ -69,13 +69,13 @@ namespace Basic.Pooling
         {
             if (prefab == null)
             {
-                Debug.LogError("ObjectPool.Init: Prefab cannot be null.");
+                Log.Error("ObjectPool.Init: Prefab cannot be null.");
                 return null;
             }
 
             if (existingItems == null)
             {
-                Debug.LogError("ObjectPool.Init: Existing items collection cannot be null.");
+                Log.Error("ObjectPool.Init: Existing items collection cannot be null.");
                 return null;
             }
 
@@ -122,7 +122,7 @@ namespace Basic.Pooling
             {
                 if (_assumeCapacity)
                 {
-                    Debug.LogError(
+                    Log.Error(
                         $"ObjectPool<{typeof(T).Name}>: Pool exhausted, instantiating new item. Consider increasing initial capacity."
                     );
                 }
@@ -142,13 +142,13 @@ namespace Basic.Pooling
         {
             if (item == null)
             {
-                Debug.LogWarning("ObjectPool.ReturnItem: Cannot return null item.");
+                Log.Warning("ObjectPool.ReturnItem: Cannot return null item.");
                 return;
             }
 
             if (!_inUse.Remove(item))
             {
-                Debug.LogWarning(
+                Log.Warning(
                     $"ObjectPool.ReturnItem: Item {item.name} was not obtained from this pool."
                 );
                 return;

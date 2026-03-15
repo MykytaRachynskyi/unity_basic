@@ -23,7 +23,7 @@ namespace Basic
             {
                 if (expectOne)
                 {
-                    Debug.LogError(
+                    Log.Error(
                         $"Found {objs.Length} instances of object {typeof(T).Name}, while expected 1!"
                     );
                 }
@@ -35,7 +35,7 @@ namespace Basic
                     }
                     else
                     {
-                        Debug.LogError($"Found null instance of object {typeof(T).Name}");
+                        Log.Error($"Found null instance of object {typeof(T).Name}");
                     }
                 }
                 return null;
@@ -44,7 +44,7 @@ namespace Basic
             {
                 if (!objs[0])
                 {
-                    Debug.LogError($"Found null instance of object {typeof(T).Name}");
+                    Log.Error($"Found null instance of object {typeof(T).Name}");
                 }
                 return objs[0];
             }

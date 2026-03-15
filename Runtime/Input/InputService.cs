@@ -81,7 +81,7 @@ namespace Basic.Input
             {
                 if (!_regionHandlers.TryAdd(handler.Region.ID, new()))
                 {
-                    Debug.LogError($"Failed to add region {handler.Region.ID} to dictionary.");
+                    Log.Error($"Failed to add region {handler.Region.ID} to dictionary.");
                 }
             }
 
@@ -91,7 +91,7 @@ namespace Basic.Input
             }
             else
             {
-                Debug.LogError(
+                Log.Error(
                     $"Failed to register handler for region {handler.Region}. Handler already registered."
                 );
             }
