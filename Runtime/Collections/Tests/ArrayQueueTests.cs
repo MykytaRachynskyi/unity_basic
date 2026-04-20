@@ -584,6 +584,26 @@ namespace Basic.Collections.Tests
 
             Assert.That(q.ToDequeuedList(), Is.EqualTo(new[] { 100, 200 }));
         }
+
+        [Test]
+        public void Clear_WhenAlreadyEmptyAfterDrain_ResetsHeadAndTailToZero()
+        {
+            var q = new ArrayQueue<int>(8);
+            q.TryEnqueue(1);
+            q.TryEnqueue(2);
+            q.TryDequeue(out _);
+            q.TryDequeue(out _);
+
+            Assert.That(q.Count, Is.Zero);
+            Assert.That(q.Head, Is.EqualTo(2));
+            Assert.That(q.Tail, Is.EqualTo(2));
+
+            q.Clear();
+
+            Assert.That(q.Count, Is.Zero);
+            Assert.That(q.Head, Is.Zero);
+            Assert.That(q.Tail, Is.Zero);
+        }
     }
 
     internal static class ArrayQueueTestExtensions

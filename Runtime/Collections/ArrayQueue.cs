@@ -111,11 +111,6 @@ namespace Basic
 
         public void Clear()
         {
-            if (Count == 0)
-            {
-                return;
-            }
-
             for (var i = 0; i < Count; i++)
             {
                 _items[(Head + i) % _items.Length] = default;
