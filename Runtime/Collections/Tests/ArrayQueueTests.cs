@@ -537,6 +537,53 @@ namespace Basic.Collections.Tests
 
             Assert.Throws<InvalidOperationException>(() => _ = e.Current);
         }
+
+        [Test]
+        public void Clear_WhenQueueHasItems_ResetsCountAndIndicesWithoutChangingCapacity()
+        {
+            var q = new ArrayQueue<int>(4);
+            q.TryEnqueue(0);
+            q.TryEnqueue(1);
+            q.TryDequeue(out _);
+            q.TryEnqueue(2);
+
+            Assert.That(q.Count, Is.EqualTo(2));
+            Assert.That(q.Head, Is.EqualTo(1));
+            Assert.That(q.Tail, Is.EqualTo(3));
+            Assert.That(q.Capacity, Is.EqualTo(4));
+
+            q.Clear();
+
+            Assert.That(q.Count, Is.Zero);
+            Assert.That(q.Head, Is.Zero);
+            Assert.That(q.Tail, Is.Zero);
+            Assert.That(q.Capacity, Is.EqualTo(4));
+            Assert.That(q.TryDequeue(out _), Is.False);
+        }
+
+        [Test]
+        public void Clear_AfterGrowth_QueueCanBeReusedInFifoOrder()
+        {
+            var q = new ArrayQueue<int>(2);
+            q.TryEnqueue(10);
+            q.TryEnqueue(11);
+            q.TryEnqueue(12);
+            var grownCapacity = q.Capacity;
+
+            Assert.That(grownCapacity, Is.GreaterThan(2));
+
+            q.Clear();
+
+            Assert.That(q.Count, Is.Zero);
+            Assert.That(q.Head, Is.Zero);
+            Assert.That(q.Tail, Is.Zero);
+            Assert.That(q.Capacity, Is.EqualTo(grownCapacity));
+
+            q.TryEnqueue(100);
+            q.TryEnqueue(200);
+
+            Assert.That(q.ToDequeuedList(), Is.EqualTo(new[] { 100, 200 }));
+        }
     }
 
     internal static class ArrayQueueTestExtensions
