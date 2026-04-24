@@ -109,6 +109,18 @@ namespace Basic
             return true;
         }
 
+        public void Clear()
+        {
+            for (var i = 0; i < Count; i++)
+            {
+                _items[(Head + i) % _items.Length] = default;
+            }
+
+            Count = 0;
+            Head = 0;
+            Tail = 0;
+        }
+
         private void Grow()
         {
             var newCapacity = (int)(Capacity * GROWTH_FACTOR);
