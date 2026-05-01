@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Basic.DOTween
+namespace Basic.DOTweenExtensions
 {
 	[System.Serializable]
 	public struct Vector3PunchSettings
