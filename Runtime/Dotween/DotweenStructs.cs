@@ -7,7 +7,7 @@ namespace Basic.DOTweenExtensions
 	{
 		public Vector3 Strength;
 		public float Duration;
-		public float Vibrato;
+		public int Vibrato;
 		public float Elasticity;
 	}
 }
