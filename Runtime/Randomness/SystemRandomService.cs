@@ -4,7 +4,7 @@ namespace Basic.Randomness
 {
 	public sealed class SystemRandomService : IRandomnessService
 	{
-		private readonly Random _random;
+		private Random _random;
 		private readonly byte[] _ulongBuffer = new byte[8];
 
 		public SystemRandomService()
@@ -13,6 +13,11 @@ namespace Basic.Randomness
 		}
 
 		public SystemRandomService(int seed)
+		{
+			_random = new Random(seed);
+		}
+
+		public void InitializeWithSeed(int seed)
 		{
 			_random = new Random(seed);
 		}
