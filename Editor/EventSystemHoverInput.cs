@@ -33,17 +33,31 @@ namespace Basic.UnityEditorTools
 			if (!IsKeyDown(key))
 				return false;
 
-			var shiftRequired = (modifiers & ShortcutModifiers.Shift) != 0;
-			var altRequired = (modifiers & ShortcutModifiers.Alt) != 0;
-			var actionRequired = (modifiers & ShortcutModifiers.Action) != 0;
+			return AreModifiersExactMatch(modifiers);
+		}
 
-			var shiftHeld = IsModifierHeld(ShortcutModifiers.Shift);
-			var altHeld = IsModifierHeld(ShortcutModifiers.Alt);
-			var actionHeld = IsModifierHeld(ShortcutModifiers.Action);
+		private static bool AreModifiersExactMatch(ShortcutModifiers modifiers)
+		{
+			if (((modifiers & ShortcutModifiers.Shift) != 0) != IsModifierHeld(ShortcutModifiers.Shift))
+				return false;
 
-			return shiftHeld == shiftRequired
-			       && altHeld == altRequired
-			       && actionHeld == actionRequired;
+			if (((modifiers & ShortcutModifiers.Alt) != 0) != IsModifierHeld(ShortcutModifiers.Alt))
+				return false;
+
+			if (Application.platform == RuntimePlatform.OSXEditor)
+			{
+				if (((modifiers & ShortcutModifiers.Action) != 0) != IsModifierHeld(ShortcutModifiers.Action))
+					return false;
+
+				if (((modifiers & ShortcutModifiers.Control) != 0) != IsModifierHeld(ShortcutModifiers.Control))
+					return false;
+
+				return true;
+			}
+
+			var controlFamilyRequired = (modifiers & (ShortcutModifiers.Action | ShortcutModifiers.Control)) != 0;
+			var controlFamilyHeld = IsModifierHeld(ShortcutModifiers.Control);
+			return controlFamilyRequired == controlFamilyHeld;
 		}
 
 		private static bool IsKeyDown(KeyCode key)
@@ -94,6 +108,8 @@ namespace Basic.UnityEditorTools
 					return keyboard.shiftKey.isPressed;
 				case ShortcutModifiers.Alt:
 					return keyboard.altKey.isPressed;
+				case ShortcutModifiers.Control:
+					return keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
 				case ShortcutModifiers.Action:
 					if (Application.platform == RuntimePlatform.OSXEditor)
 						return keyboard.leftMetaKey.isPressed || keyboard.rightMetaKey.isPressed;
@@ -115,6 +131,9 @@ namespace Basic.UnityEditorTools
 				case ShortcutModifiers.Alt:
 					return UnityEngine.Input.GetKey(KeyCode.LeftAlt)
 					       || UnityEngine.Input.GetKey(KeyCode.RightAlt);
+				case ShortcutModifiers.Control:
+					return UnityEngine.Input.GetKey(KeyCode.LeftControl)
+					       || UnityEngine.Input.GetKey(KeyCode.RightControl);
 				case ShortcutModifiers.Action:
 					if (Application.platform == RuntimePlatform.OSXEditor)
 						return UnityEngine.Input.GetKey(KeyCode.LeftCommand)

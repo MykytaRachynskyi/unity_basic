@@ -55,7 +55,9 @@ namespace Basic.UnityEditorTools
 					parts.Add("Shift");
 				if ((modifiers & ShortcutModifiers.Alt) != 0)
 					parts.Add("Alt");
-				if ((modifiers & ShortcutModifiers.Action) != 0)
+				if ((modifiers & ShortcutModifiers.Control) != 0)
+					parts.Add("Ctrl");
+				else if ((modifiers & ShortcutModifiers.Action) != 0)
 					parts.Add(Application.platform == RuntimePlatform.OSXEditor ? "Cmd" : "Ctrl");
 				parts.Add(SelectKey.ToString());
 				return string.Join("+", parts);
