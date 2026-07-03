@@ -16,15 +16,18 @@ namespace Basic.UnityEditorTools
 		private const float LabelWidth = 220f;
 
 		private static GameObject _lastHovered;
+		private static GameObject _lastHoveredInGameView;
 		private static readonly List<RaycastResult> RaycastResults = new(8);
 		private static bool _styleScheduled;
+		private static int _lastHoverUpdateFrame = -1;
 
 		public static GameObject CurrentHovered { get; private set; }
 
 		static EventSystemHoverToolbar()
 		{
-			EditorApplication.update += OnEditorUpdate;
 			EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+			if (EditorApplication.isPlaying)
+				Application.onBeforeRender += OnBeforeRender;
 		}
 
 		[MainToolbarElement(ToolbarPath, defaultDockPosition = MainToolbarDockPosition.Middle, defaultDockIndex = DockIndex)]
@@ -40,20 +43,51 @@ namespace Basic.UnityEditorTools
 
 		private static void OnPlayModeStateChanged(PlayModeStateChange state)
 		{
+			if (state == PlayModeStateChange.EnteredPlayMode)
+				Application.onBeforeRender += OnBeforeRender;
+			else if (state == PlayModeStateChange.ExitingPlayMode)
+				Application.onBeforeRender -= OnBeforeRender;
+
 			if (state != PlayModeStateChange.EnteredPlayMode && state != PlayModeStateChange.EnteredEditMode)
 				return;
 
 			_lastHovered = null;
+			_lastHoveredInGameView = null;
 			CurrentHovered = null;
+			_lastHoverUpdateFrame = -1;
 			RefreshToolbar();
 		}
 
-		private static void OnEditorUpdate()
+		private static void OnBeforeRender()
+		{
+			if (!EditorApplication.isPlaying || EventSystemHoverInput.ShouldPollInputSystemHotkey)
+				return;
+
+			UpdateHoverState();
+		}
+
+		internal static void UpdateHoverState()
 		{
 			if (!EditorApplication.isPlaying)
 				return;
 
-			var hovered = GetHoveredGameObject();
+			if (_lastHoverUpdateFrame == Time.frameCount)
+				return;
+
+			_lastHoverUpdateFrame = Time.frameCount;
+
+			GameObject hovered;
+			if (IsMouseInGameView())
+			{
+				hovered = GetHoveredGameObject();
+				if (hovered != null)
+					_lastHoveredInGameView = hovered;
+			}
+			else
+			{
+				hovered = _lastHoveredInGameView;
+			}
+
 			CurrentHovered = hovered;
 
 			if (hovered != _lastHovered)
@@ -61,12 +95,36 @@ namespace Basic.UnityEditorTools
 				_lastHovered = hovered;
 				RefreshToolbar();
 			}
+		}
 
-			if (EventSystemHoverSettings.IsHotkeyPressedThisFrame() && hovered != null)
+		private static bool IsMouseInGameView()
+		{
+			var mousePosition = EventSystemHoverInput.GetMouseScreenPosition();
+			var screenPoint = new Vector2(mousePosition.x, Screen.height - mousePosition.y);
+
+			foreach (var window in Resources.FindObjectsOfTypeAll<EditorWindow>())
 			{
-				Selection.activeGameObject = hovered;
-				EditorGUIUtility.PingObject(hovered);
+				if (window == null)
+					continue;
+
+				var typeName = window.GetType().Name;
+				if (typeName != "GameView" && typeName != "SimulatorWindow")
+					continue;
+
+				if (window.position.Contains(screenPoint))
+					return true;
 			}
+
+			return false;
+		}
+
+		public static void TrySelectHovered()
+		{
+			if (!EditorApplication.isPlaying || CurrentHovered == null)
+				return;
+
+			Selection.activeGameObject = CurrentHovered;
+			EditorGUIUtility.PingObject(CurrentHovered);
 		}
 
 		private static void RefreshToolbar()
@@ -142,15 +200,20 @@ namespace Basic.UnityEditorTools
 
 			if (CurrentHovered == null)
 			{
-				return new MainToolbarContent(
-					"Hover: —",
-					$"Nothing under mouse. {EventSystemHoverSettings.HotkeyDisplayString} to select hovered object."
-				);
+				var idleTooltip = IsMouseInGameView()
+					? $"Nothing under mouse. {EventSystemHoverSettings.HotkeyDisplayString} to select hovered object."
+					: $"Mouse outside Game view. {EventSystemHoverSettings.HotkeyDisplayString} to select last hovered object.";
+
+				return new MainToolbarContent("Hover: —", idleTooltip);
 			}
+
+			var tooltipPath = GetHierarchyPath(CurrentHovered);
+			if (!IsMouseInGameView())
+				tooltipPath += "\n(Mouse outside Game view — showing last hovered object)";
 
 			return new MainToolbarContent(
 				$"Hover: {CurrentHovered.name}",
-				$"{GetHierarchyPath(CurrentHovered)}\n{EventSystemHoverSettings.HotkeyDisplayString} to select in Hierarchy"
+				$"{tooltipPath}\n{EventSystemHoverSettings.HotkeyDisplayString} to select in Hierarchy"
 			);
 		}
 

@@ -149,5 +149,29 @@ namespace Basic.UnityEditorTools
 #if ENABLE_LEGACY_INPUT_MANAGER
 		private static bool CanUseLegacyInput() => ActiveInputHandler != 1;
 #endif
+
+		public static bool ShouldPollInputSystemHotkey
+		{
+			get
+			{
+#if ENABLE_INPUT_SYSTEM
+				return PreferInputSystem();
+#else
+				return false;
+#endif
+			}
+		}
+
+		public static bool ShouldPollLegacyHotkey
+		{
+			get
+			{
+#if ENABLE_LEGACY_INPUT_MANAGER
+				return CanUseLegacyInput() && !ShouldPollInputSystemHotkey;
+#else
+				return false;
+#endif
+			}
+		}
 	}
 }

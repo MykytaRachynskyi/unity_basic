@@ -36,6 +36,7 @@ namespace Basic.UnityEditorTools
 			{
 				EventSystemHoverSettings.SelectKey = key;
 				EventSystemHoverSettings.SelectModifiers = modifiers;
+				EventSystemHoverHotkey.ApplyShortcutBinding();
 				MainToolbar.Refresh(EventSystemHoverToolbar.ToolbarPath);
 			}
 
