@@ -11,7 +11,7 @@ namespace Basic.UnityEditorTools
 
         private static AddRequest _request;
 
-        [MainToolbarElement("Test", defaultDockPosition = MainToolbarDockPosition.Right)]
+        [MainToolbarElement("Test", defaultDockPosition = MainToolbarDockPosition.Right, defaultDockIndex = 101)]
         private static MainToolbarElement CreateAnalysisWindowsBar()
         {
             static void UpdatePackage()
