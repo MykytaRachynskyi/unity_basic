@@ -12,10 +12,12 @@ namespace Basic.UnityEditorTools
 	{
 		public const string ToolbarPath = "Basic/EventSystemHover";
 
-		private const int DockIndex = 102;
+		private const int DockIndex = 1;
+		private const float LabelWidth = 220f;
 
 		private static GameObject _lastHovered;
 		private static readonly List<RaycastResult> RaycastResults = new(8);
+		private static bool _styleScheduled;
 
 		public static GameObject CurrentHovered { get; private set; }
 
@@ -25,9 +27,11 @@ namespace Basic.UnityEditorTools
 			EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
 		}
 
-		[MainToolbarElement(ToolbarPath, defaultDockPosition = MainToolbarDockPosition.Right, defaultDockIndex = DockIndex)]
+		[MainToolbarElement(ToolbarPath, defaultDockPosition = MainToolbarDockPosition.Middle, defaultDockIndex = DockIndex)]
 		private static MainToolbarElement CreateToolbarElement()
 		{
+			ScheduleApplyFixedWidthStyle();
+
 			return new MainToolbarLabel(CreateContent())
 			{
 				populateContextMenu = PopulateContextMenu
@@ -41,7 +45,7 @@ namespace Basic.UnityEditorTools
 
 			_lastHovered = null;
 			CurrentHovered = null;
-			MainToolbar.Refresh(ToolbarPath);
+			RefreshToolbar();
 		}
 
 		private static void OnEditorUpdate()
@@ -55,7 +59,7 @@ namespace Basic.UnityEditorTools
 			if (hovered != _lastHovered)
 			{
 				_lastHovered = hovered;
-				MainToolbar.Refresh(ToolbarPath);
+				RefreshToolbar();
 			}
 
 			if (EventSystemHoverSettings.IsHotkeyPressedThisFrame() && hovered != null)
@@ -63,6 +67,69 @@ namespace Basic.UnityEditorTools
 				Selection.activeGameObject = hovered;
 				EditorGUIUtility.PingObject(hovered);
 			}
+		}
+
+		private static void RefreshToolbar()
+		{
+			MainToolbar.Refresh(ToolbarPath);
+			ScheduleApplyFixedWidthStyle();
+		}
+
+		private static void ScheduleApplyFixedWidthStyle()
+		{
+			if (_styleScheduled)
+				return;
+
+			_styleScheduled = true;
+			EditorApplication.delayCall += ApplyFixedWidthStyle;
+		}
+
+		private static void ApplyFixedWidthStyle()
+		{
+			_styleScheduled = false;
+
+			var element = FindToolbarVisualElement();
+			if (element == null)
+				return;
+
+			element.style.flexShrink = 0;
+			element.style.flexGrow = 0;
+			element.style.width = LabelWidth;
+			element.style.minWidth = LabelWidth;
+			element.style.maxWidth = LabelWidth;
+
+			var label = element.Q<Label>();
+			if (label == null)
+				return;
+
+			label.style.flexShrink = 0;
+			label.style.width = Length.Percent(100);
+			label.style.overflow = Overflow.Hidden;
+			label.style.textOverflow = TextOverflow.Ellipsis;
+			label.style.unityTextOverflowPosition = TextOverflowPosition.End;
+			label.style.whiteSpace = WhiteSpace.NoWrap;
+		}
+
+		private static VisualElement FindToolbarVisualElement()
+		{
+			foreach (var window in Resources.FindObjectsOfTypeAll<EditorWindow>())
+			{
+				var root = window.rootVisualElement;
+				if (root == null)
+					continue;
+
+				var element = root.Q<VisualElement>(ToolbarPath);
+				if (element != null)
+					return element;
+
+				element = root.Query<VisualElement>()
+					.Where(e => e.name == ToolbarPath || e.name.EndsWith("EventSystemHover"))
+					.First();
+				if (element != null)
+					return element;
+			}
+
+			return null;
 		}
 
 		private static MainToolbarContent CreateContent()
