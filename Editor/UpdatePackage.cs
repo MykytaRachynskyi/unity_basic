@@ -11,7 +11,9 @@ namespace Basic.UnityEditorTools
 
         private static AddRequest _request;
 
-        [MainToolbarElement("Test", defaultDockPosition = MainToolbarDockPosition.Right, defaultDockIndex = 101)]
+        private const string ToolbarPath = "Basic/UpdateUnityBasic";
+
+        [MainToolbarElement(ToolbarPath, defaultDockPosition = MainToolbarDockPosition.Right, defaultDockIndex = 101)]
         private static MainToolbarElement CreateAnalysisWindowsBar()
         {
             static void UpdatePackage()
