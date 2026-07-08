@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2571dc9d53565c34f9517cc37a066403, type: 3}
+  m_Name: ColorPalette_Basic
+  m_EditorClassIdentifier: Basic::Basic.UI.ColorPalette
+  _entries:
+  - _name: Primary
+    _color: {r: 0.05882353, g: 0.02745098, b: 0.1882353, a: 1}
+    _configId:
+      _guid:
+        FirstHalf: 5114714630526392139
+        SecondHalf: 758892627104783778
+  - _name: Primary - Brighter
+    _color: {r: 0.09019608, g: 0.039215688, b: 0.29411766, a: 1}
+    _configId:
+      _guid:
+        FirstHalf: 5600360912311112592
+        SecondHalf: 1171749975948572345
+  - _name: Secondary
+    _color: {r: 0.98039216, g: 1, b: 0.92941177, a: 1}
+    _configId:
+      _guid:
+        FirstHalf: 5661062891326416686
+        SecondHalf: 8874705041896692144
+  - _name: Tertiary
+    _color: {r: 0.85490197, g: 1, b: 0.26666668, a: 1}
+    _configId:
+      _guid:
+        FirstHalf: 5027572498959463088
+        SecondHalf: 773749843107437452
+  - _name: Highlight
+    _color: {r: 0.11372549, g: 0.7411765, b: 0.6431373, a: 1}
+    _configId:
+      _guid:
+        FirstHalf: 5303993803280244425
+        SecondHalf: 6007702611263080352
