@@ -30,6 +30,7 @@ namespace Basic
 
         protected virtual void OnValidate()
         {
+#if UNITY_EDITOR
             _usedGUIDs ??= new();
             _usedGUIDs.Clear();
 
@@ -51,11 +52,10 @@ namespace Basic
 
             if (dirty)
             {
-#if UNITY_EDITOR
                 UnityEditor.EditorUtility.SetDirty(this);
                 UnityEditor.AssetDatabase.SaveAssets();
-#endif
             }
+#endif
         }
 
         public void GetNames(IList<string> list)

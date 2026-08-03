@@ -2,20 +2,12 @@ namespace Basic
 {
     public interface IConfig
     {
-        public GUID GUID { get; set; }
-        public GUIDBasedConfigID ConfigID { get; }
-        public string DEBUG_Name { get; }
-
-        public void EDITOR_SetGUID(GUID guid)
-        {
-            GUID = guid;
+        GUID GUID { get; }
+        GUIDBasedConfigID ConfigID { get; }
+        string DEBUG_Name { get; }
 
 #if UNITY_EDITOR
-            if (this is UnityEngine.ScriptableObject so)
-            {
-                UnityEditor.EditorUtility.SetDirty(so);
-            }
+        void EDITOR_SetGUID(GUID guid);
 #endif
-        }
     }
 }

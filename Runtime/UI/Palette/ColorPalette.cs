@@ -113,6 +113,7 @@ namespace Basic.UI
             return false;
         }
 
+#if UNITY_EDITOR
         private void OnValidate()
         {
             RepairGUIDs();
@@ -143,14 +144,13 @@ namespace Basic.UI
                 usedGuids.Add(entry.ConfigID.GUID);
             }
 
-#if UNITY_EDITOR
             if (dirty)
             {
                 UnityEditor.EditorUtility.SetDirty(this);
                 UnityEditor.AssetDatabase.SaveAssets();
             }
-#endif
         }
+#endif
 
         private void BindEntries()
         {

@@ -107,11 +107,14 @@ namespace Basic.UI
             base.OnDisable();
         }
 
-        private void OnValidate()
+#if UNITY_EDITOR
+        protected override void OnValidate()
         {
+            base.OnValidate();
             ApplyResolvedColor();
             RefreshRegistration();
         }
+#endif
 
         private Color ResolveColor()
         {

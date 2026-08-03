@@ -26,17 +26,15 @@ namespace Basic.UI
             set => _color = value;
         }
 
-        public GUID GUID
-        {
-            get => _configId.GUID;
-            set => _configId.EDITOR_SetGUID(value);
-        }
+        public GUID GUID => _configId.GUID;
 
         public GUIDBasedConfigID ConfigID => _configId;
 
         public string DEBUG_Name => string.IsNullOrEmpty(_name) ? "Unnamed" : _name;
 
+#if UNITY_EDITOR
         public void EDITOR_SetGUID(GUID guid) => _configId.EDITOR_SetGUID(guid);
+#endif
 
         internal void BindOwner(ColorPalette owner) => _configId.Bind(owner);
     }
