@@ -107,9 +107,8 @@ namespace Basic.UI
             base.OnDisable();
         }
 
-        protected override void OnValidate()
+        private void OnValidate()
         {
-            base.OnValidate();
             ApplyResolvedColor();
             RefreshRegistration();
         }
