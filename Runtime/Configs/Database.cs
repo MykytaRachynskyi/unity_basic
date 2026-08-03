@@ -43,7 +43,7 @@ namespace Basic
                     Log.Info(
                         $"Generating new ID for config {config.DEBUG_Name} in {name}!\nWas:{config.ConfigID.GUID}\nNew:{newGUID}"
                     );
-                    config.EDITOR_SetGUID(newGUID);
+                    ((IConfig)config).EDITOR_SetGUID(newGUID);
                     dirty = true;
                 }
 

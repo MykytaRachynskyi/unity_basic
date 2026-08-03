@@ -137,7 +137,7 @@ namespace Basic.UI
                     Log.Info(
                         $"Generating new ID for color {entry.DEBUG_Name} in {name}!\nWas:{entry.ConfigID.GUID}\nNew:{newGuid}"
                     );
-                    entry.EDITOR_SetGUID(newGuid);
+                    ((IConfig)entry).EDITOR_SetGUID(newGuid);
                     dirty = true;
                 }
 
