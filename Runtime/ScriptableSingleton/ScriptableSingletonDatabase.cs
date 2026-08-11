@@ -98,7 +98,8 @@ namespace Basic.Singleton
                         if (!LoadFromAddressables(out _instance))
                         {
                             Log.Error(
-                                "Failed to load Scriptable Singleton Database from addressables."
+                                $"Failed to load ScriptableSingletonDatabase from Addressables (label: {typeof(ScriptableSingletonDatabase).Name}). "
+                                    + "Ensure the asset is addressable, labeled, and Addressables content is built."
                             );
                         }
                     }
@@ -119,12 +120,32 @@ namespace Basic.Singleton
         }
 #endif
 
+        // Player builds load by Addressables label (not address). Consuming projects must:
+        // - Mark ScriptableSingletonDatabase.asset as Addressable
+        // - Assign label ScriptableSingletonDatabase (typeof(ScriptableSingletonDatabase).Name)
+        // - Address may remain the default asset path
+        // - Build Addressables content with the player
+        // Exactly one asset should carry this label.
         private static bool LoadFromAddressables(out ScriptableSingletonDatabase instance)
         {
-            var op = Addressables.LoadAssetAsync<ScriptableSingletonDatabase>(
-                typeof(ScriptableSingletonDatabase).Name
-            );
-            instance = op.WaitForCompletion();
+            instance = null;
+            var label = typeof(ScriptableSingletonDatabase).Name;
+            var handle = Addressables.LoadAssetsAsync<ScriptableSingletonDatabase>(label, _ => { });
+            var assets = handle.WaitForCompletion();
+            Addressables.Release(handle);
+            if (assets == null || assets.Count == 0)
+            {
+                return false;
+            }
+
+            if (assets.Count > 1)
+            {
+                Log.Warning(
+                    $"Multiple ScriptableSingletonDatabase assets found with label '{label}'; using '{assets[0].name}'."
+                );
+            }
+
+            instance = assets[0];
             return instance != null;
         }
 

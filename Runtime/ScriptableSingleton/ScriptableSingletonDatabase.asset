@@ -12,5 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f0a288fa65d72a54d98a17592d8cd5fa, type: 3}
   m_Name: ScriptableSingletonDatabase
   m_EditorClassIdentifier: 
-  allSingletons:
-  - {fileID: 11400000, guid: 5fc38784c6562184f8d18eac30ecf6b0, type: 2}
+  allSingletons: []
