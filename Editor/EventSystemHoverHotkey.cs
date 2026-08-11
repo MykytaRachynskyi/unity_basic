@@ -12,6 +12,8 @@ namespace Basic.UnityEditorTools
 	{
 		public const string ShortcutId = "Basic/Event System Hover/Select Hovered";
 
+		static bool _loggedReadOnlyProfileSkip;
+
 		static EventSystemHoverHotkey()
 		{
 			EditorApplication.update += OnLegacyEditorUpdate;
@@ -32,7 +34,22 @@ namespace Basic.UnityEditorTools
 
 		public static void ApplyShortcutBinding()
 		{
-			ShortcutManager.instance.RebindShortcut(
+			var shortcutManager = ShortcutManager.instance;
+			if (shortcutManager.IsProfileReadOnly(shortcutManager.activeProfileId))
+			{
+				if (!_loggedReadOnlyProfileSkip)
+				{
+					_loggedReadOnlyProfileSkip = true;
+					Debug.Log(
+						"Skipping shortcut rebind: active profile is read-only. "
+						+ "Create a custom profile in Edit → Shortcuts to customize the binding."
+					);
+				}
+
+				return;
+			}
+
+			shortcutManager.RebindShortcut(
 				ShortcutId,
 				new ShortcutBinding(
 					new KeyCombination(
