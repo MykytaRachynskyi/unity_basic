@@ -84,6 +84,17 @@ namespace Basic
             Emit(LogLevel.Error, message, ModuleNameResolver.Resolve(filePath));
         }
 
+        // ───────────────────────── CLI (always compiled) ─────────────────────────
+
+        /// <summary>
+        /// Always emits to configured sinks. Use for batchmode CLI output that must not be stripped.
+        /// </summary>
+        [HideInCallstack]
+        public static void CliInfo(string message, [CallerFilePath] string filePath = "")
+        {
+            Emit(LogLevel.Info, message, ModuleNameResolver.Resolve(filePath));
+        }
+
         // ───────────────────────── Fatal (always compiled) ─────────────────────────
 
         [HideInCallstack]
@@ -186,7 +197,10 @@ namespace Basic
 
             _initialized = true;
 
-            var settings = LoggerSettingsContainer.Settings;
+            LoggerSettings settings = null;
+            if (LoggerSettingsContainer.Instance != null)
+                settings = LoggerSettingsContainer.Settings;
+
             if (settings != null)
             {
                 _minLevel = settings.DefaultMinLevel;
