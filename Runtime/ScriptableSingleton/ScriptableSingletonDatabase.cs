@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NaughtyAttributes;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace Basic.Singleton
 {
@@ -78,6 +79,10 @@ namespace Basic.Singleton
         }
 
         private static ScriptableSingletonDatabase _instance;
+
+        // Retained for process lifetime — releasing unloads the bundle and nulls nested
+        // serialized refs on singletons (e.g. BuildingDatabase.allConfigs).
+        private static AsyncOperationHandle<IList<ScriptableSingletonDatabase>> _addressablesHandle;
         private static ScriptableSingletonDatabase Instance
         {
             get
@@ -125,14 +130,22 @@ namespace Basic.Singleton
         // - Assign label ScriptableSingletonDatabase (typeof(ScriptableSingletonDatabase).Name)
         // - Address may remain the default asset path
         // - Build Addressables content with the player
+        // - Prefer recursive dependency building (NonRecursiveBuilding = false) so nested
+        //   singleton assets (databases, configs) are included in bundles
         // Exactly one asset should carry this label.
         private static bool LoadFromAddressables(out ScriptableSingletonDatabase instance)
         {
             instance = null;
             var label = typeof(ScriptableSingletonDatabase).Name;
-            var handle = Addressables.LoadAssetsAsync<ScriptableSingletonDatabase>(label, _ => { });
-            var assets = handle.WaitForCompletion();
-            Addressables.Release(handle);
+            if (!_addressablesHandle.IsValid())
+            {
+                _addressablesHandle = Addressables.LoadAssetsAsync<ScriptableSingletonDatabase>(
+                    label,
+                    _ => { }
+                );
+            }
+
+            var assets = _addressablesHandle.WaitForCompletion();
             if (assets == null || assets.Count == 0)
             {
                 return false;
