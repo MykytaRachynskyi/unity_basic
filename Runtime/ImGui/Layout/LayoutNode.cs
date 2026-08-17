@@ -23,6 +23,8 @@ namespace Basic.ImGui.Layout
         public ElementDeclaration Declaration;
         public TextConfig TextConfig;
         public int TextSliceIndex;
+        public int WordStart;
+        public int WordCount;
         public TextMetrics TextMetrics;
         public BoundingBox Bounds;
     }

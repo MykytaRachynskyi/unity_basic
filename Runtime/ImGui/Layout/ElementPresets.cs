@@ -8,6 +8,9 @@ namespace Basic.ImGui.Layout
         {
             BackgroundColor = new Color32(40, 40, 40, 255),
             CornerRadius = new Vector4(4f, 4f, 4f, 4f),
+            Width = LayoutSizing.Grow(),
+            Height = LayoutSizing.Grow(),
+            Direction = LayoutDirection.TopToBottom,
             PaddingLeft = 8f,
             PaddingTop = 8f,
             PaddingRight = 8f,
@@ -17,6 +20,9 @@ namespace Basic.ImGui.Layout
 
         public static ElementDeclaration FullScreen => new ElementDeclaration
         {
+            Width = LayoutSizing.Grow(),
+            Height = LayoutSizing.Grow(),
+            Direction = LayoutDirection.TopToBottom,
             PaddingLeft = 0f,
             PaddingTop = 0f,
             PaddingRight = 0f,
@@ -25,7 +31,11 @@ namespace Basic.ImGui.Layout
 
         public static ElementDeclaration ScrollVertical => new ElementDeclaration
         {
+            Width = LayoutSizing.Grow(),
+            Height = LayoutSizing.Grow(),
+            Direction = LayoutDirection.TopToBottom,
             ClipChildren = true,
+            ClipVertical = true,
             PaddingLeft = 4f,
             PaddingTop = 4f,
             PaddingRight = 4f,
@@ -35,6 +45,9 @@ namespace Basic.ImGui.Layout
 
         public static ElementDeclaration Row => new ElementDeclaration
         {
+            Width = LayoutSizing.Fit(),
+            Height = LayoutSizing.Fit(),
+            Direction = LayoutDirection.LeftToRight,
             ChildGap = 4f
         };
     }

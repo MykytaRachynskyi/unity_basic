@@ -1,32 +1,51 @@
 using System;
 using System.Collections.Generic;
 using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Basic.ImGui.Layout
 {
     public sealed class ImGuiContext : IDisposable
     {
-        const int MaxNodes = 256;
-        const int MaxCommands = 512;
+        const int MaxNodes = 8192;
+        const int MaxCommands = 16384;
         const int MaxOpenDepth = 64;
 
         readonly ITextMeasurer _textMeasurer;
         readonly LayoutArena _arena = new LayoutArena();
+        readonly FrameStringTable _frameStrings = new FrameStringTable();
+        readonly ScrollStateMap _scrollStates = new ScrollStateMap();
         readonly HashSet<uint> _usedIds = new HashSet<uint>();
-        readonly List<string> _frameStrings = new List<string>();
         readonly int[] _openStack = new int[MaxOpenDepth];
 
         LayoutNode[] _nodes;
         NativeArray<RenderCommand> _commands;
+        NativeArray<LayoutElement> _layoutElements;
+        NativeArray<int> _childIndices;
+        NativeArray<int> _rootIndices;
+        NativeList<MeasuredWord> _measuredWords;
+        NativeParallelHashMap<uint, BoundingBox> _previousBounds;
+
         int _nodeCount;
         int _openDepth;
         int _commandCount;
+        int _childIndexCount;
+        int _rootCount;
         bool _layoutOpen;
 
         Vector2 _layoutDimensions;
         Vector2 _pointerPosition;
+        Vector2 _pointerDelta;
+        Vector2 _lastPointerPosition;
         bool _pointerDown;
+        bool _pointerWasDown;
+        uint _hoveredId;
+        uint _scrollTargetId;
+        uint _pressedId;
+        uint _pressedThisFrameId;
+        uint _releasedThisFrameId;
         RenderFrame _lastFrame;
 
         [ThreadStatic]
@@ -37,6 +56,11 @@ namespace Basic.ImGui.Layout
             _textMeasurer = textMeasurer ?? throw new ArgumentNullException(nameof(textMeasurer));
             _nodes = new LayoutNode[MaxNodes];
             _commands = new NativeArray<RenderCommand>(MaxCommands, Allocator.Persistent);
+            _layoutElements = new NativeArray<LayoutElement>(MaxNodes, Allocator.Persistent);
+            _childIndices = new NativeArray<int>(MaxNodes, Allocator.Persistent);
+            _rootIndices = new NativeArray<int>(MaxNodes, Allocator.Persistent);
+            _measuredWords = new NativeList<MeasuredWord>(Allocator.Persistent);
+            _previousBounds = new NativeParallelHashMap<uint, BoundingBox>(MaxNodes, Allocator.Persistent);
         }
 
         internal static ImGuiContext Current => s_current;
@@ -47,13 +71,42 @@ namespace Basic.ImGui.Layout
 
         public void SetPointerState(Vector2 position, bool isPointerDown)
         {
+            _pointerDelta = position - _pointerPosition;
+            _pointerWasDown = _pointerDown;
+            _lastPointerPosition = _pointerPosition;
             _pointerPosition = position;
             _pointerDown = isPointerDown;
         }
 
         public void UpdateScrollContainers(bool drag, Vector2 wheel, float deltaTime)
         {
-            // Phase 0: scroll state is deferred to Phase 1.
+            if (_scrollTargetId == 0 || !_scrollStates.TryGetValue(_scrollTargetId, out var state))
+            {
+                return;
+            }
+
+            if (wheel != Vector2.zero)
+            {
+                state.ScrollPosition += new float2(wheel.x, wheel.y) * 10f;
+            }
+
+            if (drag && _pointerDown)
+            {
+                state.ScrollPosition -= new float2(_pointerDelta.x, _pointerDelta.y);
+            }
+
+            if (!_pointerDown && math.lengthsq(state.Momentum) > 0.01f)
+            {
+                state.ScrollPosition += state.Momentum * deltaTime;
+                state.Momentum *= 0.95f;
+            }
+            else if (_pointerDown && drag)
+            {
+                state.Momentum = new float2(_pointerDelta.x, _pointerDelta.y);
+            }
+
+            ClampScroll(ref state);
+            _scrollStates.Set(_scrollTargetId, state);
         }
 
         public void BeginLayout()
@@ -67,10 +120,15 @@ namespace Basic.ImGui.Layout
             ref var frameHeader = ref _arena.AllocateRef<LayoutFrameHeader>();
             frameHeader.NodeCount = 0;
             _usedIds.Clear();
-            _frameStrings.Clear();
+            _frameStrings.Reset();
+            _measuredWords.Clear();
             _nodeCount = 0;
             _openDepth = 0;
             _commandCount = 0;
+            _childIndexCount = 0;
+            _rootCount = 0;
+            _pressedThisFrameId = 0;
+            _releasedThisFrameId = 0;
             _layoutOpen = true;
             s_current = this;
         }
@@ -87,8 +145,11 @@ namespace Basic.ImGui.Layout
                 throw new InvalidOperationException("EndLayout called with unclosed elements.");
             }
 
-            ResolveStubLayout();
+            FlattenDeclarationTree();
+            RunLayoutResolveJob();
+            UpdateScrollContentSizes();
             EmitRenderCommands();
+            UpdatePointerState();
 
             _lastFrame = new RenderFrame(
                 new RenderCommandBuffer { Commands = _commands, Length = _commandCount },
@@ -106,6 +167,7 @@ namespace Basic.ImGui.Layout
             EnsureLayoutOpen();
             id = ResolveElementId(id);
             RegisterId(id);
+            InvokeHoverCallback(id, declaration.HoverCallback);
 
             var nodeIndex = AddNode(id, LayoutNodeKind.Container, declaration);
             AttachToOpenParent(nodeIndex);
@@ -120,16 +182,22 @@ namespace Basic.ImGui.Layout
             id = ResolveElementId(id);
             RegisterId(id);
 
-            var textSliceIndex = AddFrameString(text);
+            var textSliceIndex = _frameStrings.Add(text);
+            var textSlice = _frameStrings.GetSlice(textSliceIndex);
+            var textSpan = _frameStrings.GetSpan(textSlice);
             var metrics = default(TextMetrics);
-            var slice = CreateTextSlice(textSliceIndex);
-            _textMeasurer.Measure(slice, config.Font, config.FontSize, ref metrics);
+            _textMeasurer.Measure(textSpan, config.Font, config.FontSize, config.LetterSpacing, ref metrics);
+
+            var wordStart = _measuredWords.Length;
+            var wordCount = TokenizeAndMeasureWords(textSpan, config, textSlice.StartIndex);
 
             var nodeIndex = AddNode(id, LayoutNodeKind.Text, default);
             ref var node = ref _nodes[nodeIndex];
             node.TextConfig = config;
             node.TextSliceIndex = textSliceIndex;
             node.TextMetrics = metrics;
+            node.WordStart = wordStart;
+            node.WordCount = wordCount;
 
             AttachToOpenParent(nodeIndex);
         }
@@ -152,7 +220,43 @@ namespace Basic.ImGui.Layout
 
         public bool TryGetHoveredId(out ElementId id)
         {
-            id = default;
+            if (_hoveredId == 0)
+            {
+                id = default;
+                return false;
+            }
+
+            id = ElementId.FromResolved(_hoveredId);
+            return true;
+        }
+
+        public bool TryGetPressedId(out ElementId id)
+        {
+            if (_pressedId == 0)
+            {
+                id = default;
+                return false;
+            }
+
+            id = ElementId.FromResolved(_pressedId);
+            return true;
+        }
+
+        public bool WasPressedThisFrame(ElementId id) => id.Id != 0 && id.Id == _pressedThisFrameId;
+
+        public bool WasReleasedThisFrame(ElementId id) => id.Id != 0 && id.Id == _releasedThisFrameId;
+
+        public bool IsPressed(ElementId id) => id.Id != 0 && _pointerDown && id.Id == _pressedId;
+
+        public bool TryGetScrollOffset(ElementId id, out Vector2 offset)
+        {
+            if (_scrollStates.TryGetValue(id.Id, out var state))
+            {
+                offset = new Vector2(state.ScrollPosition.x, state.ScrollPosition.y);
+                return true;
+            }
+
+            offset = default;
             return false;
         }
 
@@ -200,7 +304,34 @@ namespace Basic.ImGui.Layout
                 _commands.Dispose();
             }
 
+            if (_layoutElements.IsCreated)
+            {
+                _layoutElements.Dispose();
+            }
+
+            if (_childIndices.IsCreated)
+            {
+                _childIndices.Dispose();
+            }
+
+            if (_rootIndices.IsCreated)
+            {
+                _rootIndices.Dispose();
+            }
+
+            if (_measuredWords.IsCreated)
+            {
+                _measuredWords.Dispose();
+            }
+
+            if (_previousBounds.IsCreated)
+            {
+                _previousBounds.Dispose();
+            }
+
+            _frameStrings.Dispose();
             _arena.Dispose();
+            _scrollStates.Dispose();
             s_current = null;
         }
 
@@ -293,140 +424,325 @@ namespace Basic.ImGui.Layout
             return ref _nodes[_openStack[_openDepth - 1]];
         }
 
-        int AddFrameString(ReadOnlySpan<char> text)
+        int TokenizeAndMeasureWords(ReadOnlySpan<char> text, TextConfig config, int baseStartIndex)
         {
-            _frameStrings.Add(text.ToString());
-            return _frameStrings.Count - 1;
-        }
-
-        TextSlice CreateTextSlice(int stringIndex)
-        {
-            var value = _frameStrings[stringIndex];
-            return new TextSlice(0, value.Length);
-        }
-
-        void ResolveStubLayout()
-        {
-            var contentX = 0f;
-            var contentY = 0f;
-            var contentWidth = _layoutDimensions.x;
-            var contentHeight = _layoutDimensions.y;
-
-            for (var i = 0; i < _nodeCount; i++)
+            var wordCount = 0;
+            var index = 0;
+            while (index < text.Length)
             {
-                ref var node = ref _nodes[i];
-                if (node.ParentIndex >= 0)
+                while (index < text.Length && char.IsWhiteSpace(text[index]))
                 {
-                    continue;
+                    index++;
                 }
 
-                LayoutSubtree(i, contentX, contentY, contentWidth, contentHeight);
+                if (index >= text.Length)
+                {
+                    break;
+                }
+
+                var start = index;
+                while (index < text.Length && !char.IsWhiteSpace(text[index]))
+                {
+                    index++;
+                }
+
+                var wordSpan = text.Slice(start, index - start);
+                var width = _textMeasurer.MeasureWord(
+                    wordSpan,
+                    config.Font,
+                    config.FontSize,
+                    config.LetterSpacing);
+
+                _measuredWords.Add(new MeasuredWord
+                {
+                    StartIndex = baseStartIndex + start,
+                    Length = wordSpan.Length,
+                    Width = width
+                });
+                wordCount++;
             }
+
+            return wordCount;
         }
 
-        void LayoutSubtree(int nodeIndex, float x, float y, float width, float height)
+        void InvokeHoverCallback(ElementId id, ElementHoverCallback callback)
         {
-            ref var node = ref _nodes[nodeIndex];
-            node.Bounds = new BoundingBox(x, y, width, height);
-
-            if (node.Kind == LayoutNodeKind.Text)
+            if (callback == null)
             {
                 return;
             }
 
-            var innerX = x + node.Declaration.PaddingLeft;
-            var innerY = y + node.Declaration.PaddingTop;
-            var innerWidth = Mathf.Max(0f, width - node.Declaration.PaddingLeft - node.Declaration.PaddingRight);
-            var innerHeight = Mathf.Max(0f, height - node.Declaration.PaddingTop - node.Declaration.PaddingBottom);
-            var cursorY = innerY;
-
-            for (var childIndex = node.FirstChildIndex; childIndex >= 0; childIndex = _nodes[childIndex].NextSiblingIndex)
+            if (_previousBounds.TryGetValue(id.Id, out var bounds) &&
+                LayoutHitTest.Contains(bounds, new float2(_pointerPosition.x, _pointerPosition.y)))
             {
-                ref var child = ref _nodes[childIndex];
-                if (child.Kind == LayoutNodeKind.Text)
+                callback(id, new PointerData(_pointerPosition, _pointerDown));
+            }
+        }
+
+        void FlattenDeclarationTree()
+        {
+            _rootCount = 0;
+            _childIndexCount = 0;
+
+            for (var i = 0; i < _nodeCount; i++)
+            {
+                ref var node = ref _nodes[i];
+                var declaration = node.Kind == LayoutNodeKind.Container ? node.Declaration : default;
+                if (node.Kind == LayoutNodeKind.Container && declaration.ClipChildren)
                 {
-                    var childHeight = child.TextMetrics.Height > 0f ? child.TextMetrics.Height : child.TextConfig.FontSize;
-                    var childWidth = child.TextMetrics.Width > 0f ? child.TextMetrics.Width : innerWidth;
-                    LayoutSubtree(childIndex, innerX, cursorY, childWidth, childHeight);
-                    cursorY += childHeight + node.Declaration.ChildGap;
+                    declaration.ClipVertical = declaration.ClipVertical || declaration.ClipChildren;
+                }
+
+                float scrollX = 0f;
+                float scrollY = 0f;
+                if (node.Kind == LayoutNodeKind.Container && declaration.ClipChildren &&
+                    _scrollStates.TryGetValue(node.Id.Id, out var scrollState))
+                {
+                    scrollX = scrollState.ScrollPosition.x;
+                    scrollY = scrollState.ScrollPosition.y;
+                }
+
+                _layoutElements[i] = new LayoutElement
+                {
+                    ElementId = node.Id.Id,
+                    Kind = node.Kind,
+                    ParentIndex = node.ParentIndex,
+                    Direction = declaration.Direction,
+                    Width = node.Kind == LayoutNodeKind.Text
+                        ? LayoutSizing.Fit()
+                        : declaration.Width,
+                    Height = node.Kind == LayoutNodeKind.Text
+                        ? LayoutSizing.Fit()
+                        : declaration.Height,
+                    PaddingLeft = declaration.PaddingLeft,
+                    PaddingTop = declaration.PaddingTop,
+                    PaddingRight = declaration.PaddingRight,
+                    PaddingBottom = declaration.PaddingBottom,
+                    ChildGap = declaration.ChildGap,
+                    ChildAlignmentX = declaration.ChildAlignmentX,
+                    ChildAlignmentY = declaration.ChildAlignmentY,
+                    ClipChildren = declaration.ClipChildren,
+                    ClipHorizontal = declaration.ClipHorizontal,
+                    ClipVertical = declaration.ClipVertical,
+                    BackgroundColor = declaration.BackgroundColor,
+                    CornerRadius = declaration.CornerRadius,
+                    TextSliceIndex = node.TextSliceIndex,
+                    TextWidth = node.TextMetrics.Width,
+                    TextHeight = node.TextMetrics.Height,
+                    TextLineCount = node.TextMetrics.LineCount,
+                    TextWrap = node.TextConfig.Wrap,
+                    TextFontSize = node.TextConfig.FontSize,
+                    TextLetterSpacing = node.TextConfig.LetterSpacing,
+                    WordStart = node.WordStart,
+                    WordCount = node.WordCount,
+                    ScrollOffsetX = scrollX,
+                    ScrollOffsetY = scrollY
+                };
+
+                if (node.ParentIndex < 0)
+                {
+                    _rootIndices[_rootCount++] = i;
+                }
+            }
+
+            for (var i = 0; i < _nodeCount; i++)
+            {
+                ref var node = ref _nodes[i];
+                if (node.Kind != LayoutNodeKind.Container || node.FirstChildIndex < 0)
+                {
+                    _layoutElements[i] = WithChildren(_layoutElements[i], -1, 0);
                     continue;
                 }
 
-                var remainingHeight = Mathf.Max(0f, innerY + innerHeight - cursorY);
-                LayoutSubtree(childIndex, innerX, cursorY, innerWidth, remainingHeight);
-                cursorY += _nodes[childIndex].Bounds.Height + node.Declaration.ChildGap;
+                var firstChildSlot = _childIndexCount;
+                var childCount = 0;
+                for (var childIndex = node.FirstChildIndex; childIndex >= 0; childIndex = _nodes[childIndex].NextSiblingIndex)
+                {
+                    _childIndices[_childIndexCount++] = childIndex;
+                    childCount++;
+                }
+
+                _layoutElements[i] = WithChildren(_layoutElements[i], firstChildSlot, childCount);
+            }
+        }
+
+        static LayoutElement WithChildren(LayoutElement element, int firstChild, int childCount)
+        {
+            element.FirstChild = firstChild;
+            element.ChildCount = childCount;
+            return element;
+        }
+
+        void RunLayoutResolveJob()
+        {
+            var elementsSlice = _layoutElements.GetSubArray(0, _nodeCount);
+            var childSlice = _childIndices.GetSubArray(0, math.max(1, _childIndexCount));
+            var rootSlice = _rootIndices.GetSubArray(0, math.max(1, _rootCount));
+
+            var job = new LayoutResolveJob
+            {
+                Elements = elementsSlice,
+                ChildIndices = childSlice,
+                RootIndices = rootSlice,
+                Words = _measuredWords.AsArray(),
+                LayoutDimensions = new float2(_layoutDimensions.x, _layoutDimensions.y)
+            };
+
+            job.Schedule().Complete();
+        }
+
+        void UpdateScrollContentSizes()
+        {
+            for (var i = 0; i < _nodeCount; i++)
+            {
+                var element = _layoutElements[i];
+                if (element.Kind != LayoutNodeKind.Container || !element.ClipChildren)
+                {
+                    continue;
+                }
+
+                var contentWidth = 0f;
+                var contentHeight = 0f;
+                for (var c = 0; c < element.ChildCount; c++)
+                {
+                    var child = _layoutElements[_childIndices[element.FirstChild + c]];
+                    contentWidth = math.max(contentWidth, child.X + child.WidthResolved - element.X - element.PaddingLeft);
+                    contentHeight = math.max(contentHeight, child.Y + child.HeightResolved - element.Y - element.PaddingTop);
+                }
+
+                var state = _scrollStates.TryGetValue(element.ElementId, out var existing)
+                    ? existing
+                    : default;
+                state.ViewportSize = new float2(element.WidthResolved, element.HeightResolved);
+                state.ContentSize = new float2(contentWidth, contentHeight);
+                ClampScroll(ref state);
+                _scrollStates.Set(element.ElementId, state);
             }
         }
 
         void EmitRenderCommands()
         {
             _commandCount = 0;
+            _previousBounds.Clear();
 
-            for (var i = 0; i < _nodeCount; i++)
+            for (var r = 0; r < _rootCount; r++)
             {
-                ref var node = ref _nodes[i];
+                EmitNodeCommands(_rootIndices[r]);
+            }
+        }
 
-                if (node.Kind == LayoutNodeKind.Container && node.Declaration.BackgroundColor.a > 0)
+        void EmitNodeCommands(int nodeIndex)
+        {
+            var element = _layoutElements[nodeIndex];
+            var bounds = new BoundingBox(element.X, element.Y, element.WidthResolved, element.HeightResolved);
+            _previousBounds[element.ElementId] = bounds;
+
+            if (element.Kind == LayoutNodeKind.Container && element.BackgroundColor.a > 0)
+            {
+                AppendCommand(new RenderCommand
                 {
-                    AppendCommand(new RenderCommand
+                    BoundingBox = bounds,
+                    CommandType = RenderCommandType.Rectangle,
+                    ElementId = element.ElementId,
+                    RenderData = new RenderData
                     {
-                        BoundingBox = node.Bounds,
-                        CommandType = RenderCommandType.Rectangle,
-                        ElementId = node.Id.Id,
-                        RenderData = new RenderData
+                        Rectangle = new RectangleRenderData
                         {
-                            Rectangle = new RectangleRenderData
-                            {
-                                Background = node.Declaration.BackgroundColor,
-                                CornerRadius = node.Declaration.CornerRadius
-                            }
+                            Background = element.BackgroundColor,
+                            CornerRadius = element.CornerRadius
                         }
-                    });
-
-                    if (node.Declaration.ClipChildren)
-                    {
-                        AppendCommand(new RenderCommand
-                        {
-                            BoundingBox = node.Bounds,
-                            CommandType = RenderCommandType.ScissorStart,
-                            ElementId = node.Id.Id,
-                            RenderData = new RenderData
-                            {
-                                Scissor = new ScissorRenderData { ClipRect = node.Bounds }
-                            }
-                        });
                     }
-                }
+                });
+            }
 
-                if (node.Kind == LayoutNodeKind.Text)
+            var openedScissor = element.Kind == LayoutNodeKind.Container && element.ClipChildren;
+            if (openedScissor)
+            {
+                AppendCommand(new RenderCommand
                 {
-                    AppendCommand(new RenderCommand
+                    BoundingBox = bounds,
+                    CommandType = RenderCommandType.ScissorStart,
+                    ElementId = element.ElementId,
+                    RenderData = new RenderData
                     {
-                        BoundingBox = node.Bounds,
-                        CommandType = RenderCommandType.Text,
-                        ElementId = node.Id.Id,
-                        RenderData = new RenderData
-                        {
-                            Text = new TextRenderData
-                            {
-                                Font = node.TextConfig.Font,
-                                FontSize = node.TextConfig.FontSize,
-                                Color = node.TextConfig.Color,
-                                Text = CreateTextSlice(node.TextSliceIndex)
-                            }
-                        }
-                    });
-                }
+                        Scissor = new ScissorRenderData { ClipRect = bounds }
+                    }
+                });
+            }
 
-                if (node.Kind == LayoutNodeKind.Container && node.Declaration.ClipChildren)
+            if (element.Kind == LayoutNodeKind.Container)
+            {
+                for (var c = 0; c < element.ChildCount; c++)
                 {
-                    AppendCommand(new RenderCommand
-                    {
-                        CommandType = RenderCommandType.ScissorEnd,
-                        ElementId = node.Id.Id
-                    });
+                    EmitNodeCommands(_childIndices[element.FirstChild + c]);
                 }
             }
+            else
+            {
+                AppendCommand(new RenderCommand
+                {
+                    BoundingBox = bounds,
+                    CommandType = RenderCommandType.Text,
+                    ElementId = element.ElementId,
+                    RenderData = new RenderData
+                    {
+                        Text = new TextRenderData
+                        {
+                            Font = _nodes[nodeIndex].TextConfig.Font,
+                            FontSize = element.TextFontSize,
+                            Color = _nodes[nodeIndex].TextConfig.Color,
+                            Text = _frameStrings.GetSlice(element.TextSliceIndex)
+                        }
+                    }
+                });
+            }
+
+            if (openedScissor)
+            {
+                AppendCommand(new RenderCommand
+                {
+                    CommandType = RenderCommandType.ScissorEnd,
+                    ElementId = element.ElementId
+                });
+            }
+        }
+
+        void UpdatePointerState()
+        {
+            var pointer = new float2(_pointerPosition.x, _pointerPosition.y);
+            var elementsSlice = _layoutElements.GetSubArray(0, _nodeCount);
+            _hoveredId = LayoutHitTest.FindTopmost(elementsSlice, _childIndices, _rootIndices, _rootCount, pointer);
+            _scrollTargetId = LayoutHitTest.FindTopmostScrollContainer(
+                elementsSlice,
+                _childIndices,
+                _rootIndices,
+                _rootCount,
+                pointer);
+
+            if (_pointerDown && !_pointerWasDown && _hoveredId != 0)
+            {
+                _pressedId = _hoveredId;
+                _pressedThisFrameId = _hoveredId;
+            }
+
+            if (!_pointerDown && _pointerWasDown)
+            {
+                if (_pressedId != 0)
+                {
+                    _releasedThisFrameId = _pressedId;
+                }
+
+                _pressedId = 0;
+            }
+        }
+
+        static void ClampScroll(ref ScrollState state)
+        {
+            var maxX = math.max(0f, state.ContentSize.x - state.ViewportSize.x);
+            var maxY = math.max(0f, state.ContentSize.y - state.ViewportSize.y);
+            state.ScrollPosition = new float2(
+                math.clamp(state.ScrollPosition.x, 0f, maxX),
+                math.clamp(state.ScrollPosition.y, 0f, maxY));
         }
 
         void AppendCommand(RenderCommand command)

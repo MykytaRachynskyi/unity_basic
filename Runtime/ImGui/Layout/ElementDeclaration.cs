@@ -6,14 +6,28 @@ namespace Basic.ImGui.Layout
     {
         public Color32 BackgroundColor;
         public Vector4 CornerRadius;
+        public LayoutDirection Direction;
+        public LayoutSizing Width;
+        public LayoutSizing Height;
         public float PaddingLeft;
         public float PaddingTop;
         public float PaddingRight;
         public float PaddingBottom;
         public float ChildGap;
+        public ChildAlignment ChildAlignmentX;
+        public ChildAlignment ChildAlignmentY;
         public bool ClipChildren;
+        public bool ClipHorizontal;
+        public bool ClipVertical;
 
-        public static ElementDeclaration Empty => default;
+        public static ElementDeclaration Empty => new ElementDeclaration
+        {
+            Width = LayoutSizing.Grow(),
+            Height = LayoutSizing.Grow(),
+            Direction = LayoutDirection.TopToBottom,
+            ChildAlignmentX = ChildAlignment.Start,
+            ChildAlignmentY = ChildAlignment.Start
+        };
 
         public ElementDeclaration OnHover(ElementHoverCallback callback)
         {
