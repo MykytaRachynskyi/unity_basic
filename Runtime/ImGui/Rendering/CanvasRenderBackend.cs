@@ -1,12 +1,25 @@
 using Basic.ImGui.Layout;
+using UnityEngine;
 
 namespace Basic.ImGui.Rendering
 {
     public sealed class CanvasRenderBackend : IRenderBackend
     {
+        readonly ImGuiGraphic _graphic;
+
+        public CanvasRenderBackend(ImGuiGraphic graphic)
+        {
+            _graphic = graphic;
+        }
+
         public void Draw(RenderFrame frame, RenderBackendContext context)
         {
-            // Phase 0: renderer submission is deferred to Phase 2.
+            if (_graphic == null)
+            {
+                return;
+            }
+
+            _graphic.SetFrame(frame, context);
         }
     }
 }
