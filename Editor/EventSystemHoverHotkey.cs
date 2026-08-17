@@ -40,7 +40,7 @@ namespace Basic.UnityEditorTools
 				if (!_loggedReadOnlyProfileSkip)
 				{
 					_loggedReadOnlyProfileSkip = true;
-					Debug.Log(
+					Log.Warning(
 						"Skipping shortcut rebind: active profile is read-only. "
 						+ "Create a custom profile in Edit → Shortcuts to customize the binding."
 					);
