@@ -153,6 +153,7 @@ namespace Basic.ImGui.Layout
 
             _lastFrame = new RenderFrame(
                 new RenderCommandBuffer { Commands = _commands, Length = _commandCount },
+                new FrameStringBuffer { Chars = _frameStrings.Chars, Length = _frameStrings.Count },
                 _layoutDimensions);
 
             _layoutOpen = false;
