@@ -39,6 +39,8 @@ namespace Basic.ImGui.Layout
 
         internal static ElementId FromParentSeed(string label, uint parentSeed) => FromParentSeed(label.AsSpan(), parentSeed);
 
+        internal static ElementId FromResolved(uint id) => new ElementId(id, 0, id);
+
         public static ElementId Auto(uint hierarchyIndex) => new ElementId(hierarchyIndex + 1, 0, hierarchyIndex + 1);
 
         public bool Equals(ElementId other) => Id == other.Id && Offset == other.Offset && BaseId == other.BaseId;

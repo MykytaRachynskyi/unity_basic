@@ -1,3 +1,5 @@
+using System;
+
 namespace Basic.ImGui.Layout
 {
     public struct TextSlice
@@ -21,6 +23,8 @@ namespace Basic.ImGui.Layout
 
     public interface ITextMeasurer
     {
-        void Measure(TextSlice text, FontId font, float fontSize, ref TextMetrics metrics);
+        void Measure(ReadOnlySpan<char> text, FontId font, float fontSize, float letterSpacing, ref TextMetrics metrics);
+
+        float MeasureWord(ReadOnlySpan<char> word, FontId font, float fontSize, float letterSpacing);
     }
 }
