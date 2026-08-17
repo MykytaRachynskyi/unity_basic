@@ -67,6 +67,8 @@ namespace Basic.ImGui.Layout
 
         public RenderFrame LastFrame => _lastFrame;
 
+        public int LastElementCount { get; private set; }
+
         public void SetLayoutDimensions(Vector2 size) => _layoutDimensions = size;
 
         public void SetPointerState(Vector2 position, bool isPointerDown)
@@ -151,6 +153,7 @@ namespace Basic.ImGui.Layout
             EmitRenderCommands();
             UpdatePointerState();
 
+            LastElementCount = _nodeCount;
             _lastFrame = new RenderFrame(
                 new RenderCommandBuffer { Commands = _commands, Length = _commandCount },
                 new FrameStringBuffer { Chars = _frameStrings.Chars, Length = _frameStrings.Count },

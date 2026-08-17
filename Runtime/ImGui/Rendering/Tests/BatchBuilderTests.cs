@@ -241,6 +241,13 @@ namespace Basic.ImGui.Rendering.Tests
                 glyph = _glyph;
                 return true;
             }
+
+            public bool TryGetSolidFillUv(FontId fontId, out Vector2 uvMin, out Vector2 uvMax)
+            {
+                uvMin = Vector2.zero;
+                uvMax = Vector2.one;
+                return true;
+            }
         }
     }
 }

@@ -28,5 +28,7 @@ namespace Basic.ImGui.Rendering
         bool TryGetFont(FontId fontId, out FontResources resources);
 
         bool TryGetGlyph(FontId fontId, char character, float fontSize, out FontGlyph glyph);
+
+        bool TryGetSolidFillUv(FontId fontId, out Vector2 uvMin, out Vector2 uvMax);
     }
 }

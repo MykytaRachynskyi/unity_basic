@@ -3,6 +3,7 @@ using Basic.ImGui.Layout;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.UI;
 
 namespace Basic.ImGui.Rendering
 {
@@ -12,13 +13,17 @@ namespace Basic.ImGui.Rendering
 
         NativeArray<Vector3> _positions;
         NativeArray<Color32> _colors;
-        NativeArray<Vector2> _uv0;
+        NativeArray<Vector4> _uv0;
         NativeArray<ushort> _indices;
         int _capacity;
 
         readonly ClipStack _clipStack = new ClipStack();
         BatchKey _currentBatchKey;
         bool _hasCurrentBatch;
+        Vector2 _layoutDimensions;
+        Rect _localRect;
+        bool _mapToLocalRect;
+        bool _flipY;
 
         public int CommandCount { get; private set; }
         public int VertexCount { get; private set; }
@@ -39,7 +44,9 @@ namespace Basic.ImGui.Rendering
             Material defaultMaterial,
             Vector2 layoutDimensions,
             bool flipY,
-            Mesh mesh)
+            Mesh mesh,
+            Rect localRect = default,
+            bool mapToLocalRect = false)
         {
             ResetStats();
             if (!commands.IsCreated || commands.Length <= 0)
@@ -47,6 +54,11 @@ namespace Basic.ImGui.Rendering
                 ClearMesh(mesh);
                 return;
             }
+
+            _layoutDimensions = layoutDimensions;
+            _localRect = localRect;
+            _mapToLocalRect = mapToLocalRect;
+            _flipY = flipY;
 
             CommandCount = commands.Length;
             var defaultMaterialId = defaultMaterial != null ? defaultMaterial.GetInstanceID() : 0;
@@ -63,15 +75,49 @@ namespace Basic.ImGui.Rendering
                         _clipStack.Pop();
                         break;
                     case RenderCommandType.Rectangle:
-                        EmitRectangle(command, defaultMaterialId, layoutDimensions, flipY);
+                        EmitRectangle(command, defaultMaterialId, fonts);
                         break;
                     case RenderCommandType.Text:
-                        EmitText(command, strings, fonts, layoutDimensions, flipY);
+                        EmitText(command, strings, fonts);
                         break;
                 }
             }
 
             UploadMesh(mesh);
+        }
+
+        public void PopulateVertexHelper(VertexHelper vertexHelper)
+        {
+            vertexHelper.Clear();
+            if (VertexCount <= 0 || IndexCount <= 0)
+            {
+                return;
+            }
+
+            for (var i = 0; i < VertexCount; i++)
+            {
+                vertexHelper.AddVert(_positions[i], _colors[i], _uv0[i]);
+            }
+
+            for (var i = 0; i < IndexCount; i += 3)
+            {
+                vertexHelper.AddTriangle(_indices[i], _indices[i + 1], _indices[i + 2]);
+            }
+        }
+
+        public void Build(
+            RenderCommandBuffer commands,
+            FrameStringBuffer strings,
+            IFontRegistry fonts,
+            Material defaultMaterial,
+            Vector2 layoutDimensions,
+            bool flipY,
+            Rect localRect,
+            bool mapToLocalRect,
+            VertexHelper vertexHelper)
+        {
+            Build(commands, strings, fonts, defaultMaterial, layoutDimensions, flipY, null, localRect, mapToLocalRect);
+            PopulateVertexHelper(vertexHelper);
         }
 
         public void Dispose()
@@ -92,32 +138,52 @@ namespace Basic.ImGui.Rendering
             _clipStack.Clear();
         }
 
-        void EmitRectangle(RenderCommand command, int materialId, Vector2 layoutDimensions, bool flipY)
+        void EmitRectangle(RenderCommand command, int materialId, IFontRegistry fonts)
         {
-            var key = CreateBatchKey(materialId, 0);
-            TrackBatch(key);
+            var textureId = 0;
+            var scale = 1f;
+            if (fonts != null && fonts.TryGetFont(FontId.Default, out var fontResources))
+            {
+                if (fontResources.Material != null)
+                {
+                    materialId = fontResources.Material.GetInstanceID();
+                }
+
+                if (fontResources.Atlas != null)
+                {
+                    textureId = fontResources.Atlas.GetInstanceID();
+                }
+
+                scale = ComputeTmpScale(fontResources, 16f);
+            }
+
+            TrackBatch(CreateBatchKey(materialId, textureId));
 
             var box = command.BoundingBox;
             var color = command.RenderData.Rectangle.Background;
-            var y0 = TransformY(box.Y, layoutDimensions.y, flipY);
-            var y1 = TransformY(box.Y + box.Height, layoutDimensions.y, flipY);
+            var y0 = LayoutToLocalY(box.Y);
+            var y1 = LayoutToLocalY(box.Y + box.Height);
 
             var minY = Mathf.Min(y0, y1);
             var maxY = Mathf.Max(y0, y1);
-            AddSolidQuad(
-                new Vector3(box.X, minY, 0f),
-                new Vector3(box.X, maxY, 0f),
-                new Vector3(box.X + box.Width, maxY, 0f),
-                new Vector3(box.X + box.Width, minY, 0f),
-                color);
+            var bottomLeft = new Vector3(LayoutToLocalX(box.X), minY, 0f);
+            var topLeft = new Vector3(LayoutToLocalX(box.X), maxY, 0f);
+            var topRight = new Vector3(LayoutToLocalX(box.X + box.Width), maxY, 0f);
+            var bottomRight = new Vector3(LayoutToLocalX(box.X + box.Width), minY, 0f);
+
+            if (fonts != null && fonts.TryGetSolidFillUv(FontId.Default, out var uvMin, out var uvMax))
+            {
+                AddTextQuad(bottomLeft, topLeft, topRight, bottomRight, color, uvMin, uvMax, scale);
+                return;
+            }
+
+            AddSolidQuad(bottomLeft, topLeft, topRight, bottomRight, color);
         }
 
         void EmitText(
             RenderCommand command,
             FrameStringBuffer strings,
-            IFontRegistry fonts,
-            Vector2 layoutDimensions,
-            bool flipY)
+            IFontRegistry fonts)
         {
             if (fonts == null)
             {
@@ -137,6 +203,7 @@ namespace Basic.ImGui.Rendering
             var text = strings.GetSpan(textData.Text);
             var penX = command.BoundingBox.X;
             var baselineY = command.BoundingBox.Y + textData.FontSize;
+            var scale = ComputeTmpScale(fontResources, textData.FontSize);
 
             for (var i = 0; i < text.Length; i++)
             {
@@ -151,8 +218,8 @@ namespace Basic.ImGui.Rendering
                 var yTop = baselineY - glyph.BearingY;
                 var yBottom = yTop - glyph.Height;
 
-                var top = TransformY(yTop, layoutDimensions.y, flipY);
-                var bottom = TransformY(yBottom, layoutDimensions.y, flipY);
+                var top = LayoutToLocalY(yTop);
+                var bottom = LayoutToLocalY(yBottom);
                 var minY = Mathf.Min(top, bottom);
                 var maxY = Mathf.Max(top, bottom);
 
@@ -160,17 +227,27 @@ namespace Basic.ImGui.Rendering
                 var uvMax = new Vector2(glyph.UvRect.z, glyph.UvRect.w);
 
                 AddTextQuad(
-                    new Vector3(x0, minY, 0f),
-                    new Vector3(x0, maxY, 0f),
-                    new Vector3(x1, maxY, 0f),
-                    new Vector3(x1, minY, 0f),
+                    new Vector3(LayoutToLocalX(x0), minY, 0f),
+                    new Vector3(LayoutToLocalX(x0), maxY, 0f),
+                    new Vector3(LayoutToLocalX(x1), maxY, 0f),
+                    new Vector3(LayoutToLocalX(x1), minY, 0f),
                     textData.Color,
                     uvMin,
-                    uvMax);
+                    uvMax,
+                    scale);
 
                 penX += glyph.Advance;
             }
         }
+
+        static float ComputeTmpScale(FontResources fontResources, float fontSize)
+        {
+            var pointSize = Mathf.Max(1f, fontResources.PointSize);
+            var faceScale = fontResources.FontAsset != null ? fontResources.FontAsset.faceInfo.scale : 1f;
+            return fontSize / pointSize * faceScale;
+        }
+
+        static Vector4 TmpUv(Vector2 uv, float scale) => new Vector4(uv.x, uv.y, 0f, scale);
 
         BatchKey CreateBatchKey(int materialId, int textureId)
         {
@@ -203,7 +280,16 @@ namespace Basic.ImGui.Rendering
             Vector3 topRight,
             Vector3 bottomRight,
             Color32 color) =>
-            WriteQuad(bottomLeft, topLeft, topRight, bottomRight, color, Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+            WriteQuad(
+                bottomLeft,
+                topLeft,
+                topRight,
+                bottomRight,
+                color,
+                Vector4.zero,
+                Vector4.zero,
+                Vector4.zero,
+                Vector4.zero);
 
         void AddTextQuad(
             Vector3 bottomLeft,
@@ -212,11 +298,21 @@ namespace Basic.ImGui.Rendering
             Vector3 bottomRight,
             Color32 color,
             Vector2 uvBottomLeft,
-            Vector2 uvTopRight)
+            Vector2 uvTopRight,
+            float scale)
         {
             var uvTopLeft = new Vector2(uvBottomLeft.x, uvTopRight.y);
             var uvBottomRight = new Vector2(uvTopRight.x, uvBottomLeft.y);
-            WriteQuad(bottomLeft, topLeft, topRight, bottomRight, color, uvBottomLeft, uvTopLeft, uvTopRight, uvBottomRight);
+            WriteQuad(
+                bottomLeft,
+                topLeft,
+                topRight,
+                bottomRight,
+                color,
+                TmpUv(uvBottomLeft, scale),
+                TmpUv(uvTopLeft, scale),
+                TmpUv(uvTopRight, scale),
+                TmpUv(uvBottomRight, scale));
         }
 
         void WriteQuad(
@@ -225,10 +321,10 @@ namespace Basic.ImGui.Rendering
             Vector3 topRight,
             Vector3 bottomRight,
             Color32 color,
-            Vector2 uvBottomLeft,
-            Vector2 uvTopLeft,
-            Vector2 uvTopRight,
-            Vector2 uvBottomRight)
+            Vector4 uvBottomLeft,
+            Vector4 uvTopLeft,
+            Vector4 uvTopRight,
+            Vector4 uvBottomRight)
         {
             EnsureCapacity(VertexCount + 4);
             var baseVertex = VertexCount;
@@ -261,23 +357,31 @@ namespace Basic.ImGui.Rendering
 
         static float TransformY(float y, float layoutHeight, bool flipY) => flipY ? layoutHeight - y : y;
 
+        float LayoutToLocalX(float layoutX) =>
+            _mapToLocalRect ? _localRect.xMin + layoutX : layoutX;
+
+        float LayoutToLocalY(float layoutY)
+        {
+            var y = TransformY(layoutY, _layoutDimensions.y, _flipY);
+            return _mapToLocalRect ? _localRect.yMax - y : y;
+        }
+
         void UploadMesh(Mesh mesh)
         {
+            if (mesh == null)
+            {
+                return;
+            }
+
             if (VertexCount <= 0 || IndexCount <= 0)
             {
                 ClearMesh(mesh);
                 return;
             }
 
-            mesh.SetVertexBufferParams(
-                VertexCount,
-                new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3, stream: 0),
-                new VertexAttributeDescriptor(VertexAttribute.Color, VertexAttributeFormat.UNorm8, 4, stream: 1),
-                new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2, stream: 2));
-
-            mesh.SetVertexBufferData(_positions, 0, 0, VertexCount, 0, MeshUpdateFlags.DontRecalculateBounds);
-            mesh.SetVertexBufferData(_colors, 0, 0, VertexCount, 1, MeshUpdateFlags.DontRecalculateBounds);
-            mesh.SetVertexBufferData(_uv0, 0, 0, VertexCount, 2, MeshUpdateFlags.DontRecalculateBounds);
+            mesh.SetVertices(_positions.GetSubArray(0, VertexCount));
+            mesh.SetColors(_colors.GetSubArray(0, VertexCount));
+            mesh.SetUVs(0, _uv0.GetSubArray(0, VertexCount));
 
             mesh.SetIndexBufferParams(IndexCount, IndexFormat.UInt16);
             mesh.SetIndexBufferData(_indices, 0, 0, IndexCount, MeshUpdateFlags.DontRecalculateBounds);
@@ -289,6 +393,11 @@ namespace Basic.ImGui.Rendering
 
         static void ClearMesh(Mesh mesh)
         {
+            if (mesh == null)
+            {
+                return;
+            }
+
             mesh.Clear();
         }
 

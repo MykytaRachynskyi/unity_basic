@@ -36,8 +36,7 @@ namespace Basic.ImGui.Rendering
                 return false;
             }
 
-            if (!resources.FontAsset.characterLookupTable.TryGetValue(character, out var characterData)
-                || characterData.glyph == null)
+            if (!TryGetCharacterData(resources.FontAsset, character, out var characterData))
             {
                 return false;
             }
@@ -65,16 +64,96 @@ namespace Basic.ImGui.Rendering
             return true;
         }
 
+        public bool TryGetSolidFillUv(FontId fontId, out Vector2 uvMin, out Vector2 uvMax)
+        {
+            uvMin = default;
+            uvMax = default;
+            if (!TryGetGlyph(fontId, '\u2588', 16f, out var glyph) || !glyph.Found)
+            {
+                if (!TryGetGlyph(fontId, 'M', 16f, out glyph) || !glyph.Found)
+                {
+                    return false;
+                }
+            }
+
+            uvMin = new Vector2(glyph.UvRect.x, glyph.UvRect.y);
+            uvMax = new Vector2(glyph.UvRect.z, glyph.UvRect.w);
+            return true;
+        }
+
+        static bool TryGetCharacterData(TMP_FontAsset fontAsset, char character, out TMP_Character characterData)
+        {
+            if (fontAsset.characterLookupTable.TryGetValue(character, out characterData)
+                && characterData.glyph != null)
+            {
+                return true;
+            }
+
+            if (!fontAsset.TryAddCharacters(character.ToString()))
+            {
+                characterData = null;
+                return false;
+            }
+
+            return fontAsset.characterLookupTable.TryGetValue(character, out characterData)
+                && characterData.glyph != null;
+        }
+
         public static FontRegistry CreateWithDefaultFont()
         {
             var registry = new FontRegistry();
-            var defaultFont = TMP_Settings.defaultFontAsset;
+            var defaultFont = TryResolveDefaultFontAsset();
             if (defaultFont != null)
             {
                 registry.Register(FontId.Default, defaultFont);
             }
 
             return registry;
+        }
+
+        public static TMP_FontAsset TryResolveDefaultFontAsset()
+        {
+            var settings = TMP_Settings.LoadDefaultSettings();
+            if (settings != null && TMP_Settings.defaultFontAsset != null)
+            {
+                return TMP_Settings.defaultFontAsset;
+            }
+
+            var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            if (font != null)
+            {
+                return font;
+            }
+
+            font = Resources.Load<TMP_FontAsset>("LiberationSans SDF");
+            if (font != null)
+            {
+                return font;
+            }
+
+            return TryCreateRuntimeOsFontAsset();
+        }
+
+        static TMP_FontAsset TryCreateRuntimeOsFontAsset()
+        {
+            (string family, string style)[] candidates =
+            {
+                ("Arial", "Regular"),
+                ("Liberation Sans", "Regular"),
+                ("Segoe UI", "Regular"),
+            };
+
+            for (var i = 0; i < candidates.Length; i++)
+            {
+                var candidate = candidates[i];
+                var font = TMP_FontAsset.CreateFontAsset(candidate.family, candidate.style, 90);
+                if (font != null)
+                {
+                    return font;
+                }
+            }
+
+            return null;
         }
     }
 }
