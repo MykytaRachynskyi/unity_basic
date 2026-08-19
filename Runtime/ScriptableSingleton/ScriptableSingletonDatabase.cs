@@ -43,11 +43,33 @@ namespace Basic.Singleton
 
         private static void RecreateSingletonMap()
         {
-            _singletonMap = new(Instance.allSingletons.Count);
-            foreach (var singleton in Instance.allSingletons)
+            _singletonMap = BuildSingletonMap(Instance.allSingletons);
+        }
+
+        private static Dictionary<int, Singleton> BuildSingletonMap(List<Singleton> singletons)
+        {
+            if (singletons == null)
             {
-                _singletonMap.TryAdd(singleton.GetType().GetHashCode(), singleton);
+                return new Dictionary<int, Singleton>();
             }
+
+            var map = new Dictionary<int, Singleton>(singletons.Count);
+            for (var i = 0; i < singletons.Count; i++)
+            {
+                var singleton = singletons[i];
+                if (singleton == null)
+                {
+                    Log.Warning(
+                        $"ScriptableSingletonDatabase.allSingletons[{i}] is null and was skipped. "
+                            + "The reference may be Editor-only or missing from the player build."
+                    );
+                    continue;
+                }
+
+                map.TryAdd(singleton.GetType().GetHashCode(), singleton);
+            }
+
+            return map;
         }
 
         [Button]
@@ -56,6 +78,16 @@ namespace Basic.Singleton
 #if UNITY_EDITOR
             allSingletons ??= new();
             allSingletons.Clear();
+            var playerAssemblyNames = new HashSet<string>();
+            foreach (
+                var assembly in UnityEditor.Compilation.CompilationPipeline.GetAssemblies(
+                    UnityEditor.Compilation.AssembliesType.Player
+                )
+            )
+            {
+                playerAssemblyNames.Add(assembly.name);
+            }
+
             var guids = UnityEditor.AssetDatabase.FindAssets("t: ScriptableObject");
             foreach (var guid in guids)
             {
@@ -63,12 +95,28 @@ namespace Basic.Singleton
                 var scriptableObject = UnityEditor.AssetDatabase.LoadAssetAtPath<ScriptableObject>(
                     path
                 );
+                if (scriptableObject == null)
+                {
+                    continue;
+                }
+
                 var type = scriptableObject.GetType();
 
-                if (type.IsSubclassOf(typeof(Singleton)))
+                if (!type.IsSubclassOf(typeof(Singleton)))
                 {
-                    allSingletons.Add(scriptableObject as Singleton);
+                    continue;
                 }
+
+                var assemblyName = type.Assembly.GetName().Name;
+                if (!playerAssemblyNames.Contains(assemblyName))
+                {
+                    Log.Warning(
+                        $"Skipping Editor-only singleton '{type.Name}' at '{path}' (assembly '{assemblyName}' is not in player builds)."
+                    );
+                    continue;
+                }
+
+                allSingletons.Add(scriptableObject as Singleton);
             }
             allSingletons.Sort((x, y) => x.name.CompareTo(y.name));
             UnityEditor.EditorUtility.SetDirty(this);
