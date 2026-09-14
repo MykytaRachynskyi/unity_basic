@@ -1,5 +1,7 @@
 #if UNITY_EDITOR
+using System.Collections.Generic;
 using System.Reflection;
+using Basic.Singleton;
 using UnityEditor;
 using UnityEngine;
 
@@ -21,6 +23,9 @@ namespace Basic.Singleton.Editor
         private Object _selectedSingleton;
 
         private UnityEditor.Editor _currentEditor;
+
+        private const string GroupFoldoutPrefsPrefix = "ScriptableSingletonEditor.Group.";
+        private const string UngroupedSectionName = "Ungrouped";
 
         [MenuItem("Window/Scriptable Singleton Editor")]
         public static void ShowWindow()
@@ -146,29 +151,100 @@ namespace Basic.Singleton.Editor
             // Scrollable list
             _listScrollPosition = EditorGUILayout.BeginScrollView(_listScrollPosition);
 
-            int count = _allSingletonsProperty.arraySize;
-            for (int i = 0; i < count; i++)
+            var groupedIndices = BuildGroupedIndices();
+            foreach (var groupName in ScriptableSingletonDatabase.GetGroups())
             {
-                var element = _allSingletonsProperty.GetArrayElementAtIndex(i);
-                var singleton = element.objectReferenceValue;
-
-                if (singleton == null)
-                    continue;
-
-                // Highlight selected item
-                var isSelected = i == _selectedIndex;
-                var style = new GUIStyle(GUI.skin.button);
-                style.alignment = TextAnchor.MiddleLeft;
-                style.normal.background = isSelected ? Texture2D.grayTexture : null;
-
-                if (GUILayout.Button(singleton.name, style, GUILayout.Height(25)))
+                if (!groupedIndices.TryGetValue(groupName, out var indices))
                 {
-                    SelectSingleton(i);
+                    indices = new List<int>();
                 }
+
+                DrawGroupSection(groupName, indices);
+            }
+
+            if (
+                groupedIndices.TryGetValue(UngroupedSectionName, out var ungroupedIndices)
+                && ungroupedIndices.Count > 0
+            )
+            {
+                DrawGroupSection(UngroupedSectionName, ungroupedIndices);
             }
 
             EditorGUILayout.EndScrollView();
             EditorGUILayout.EndVertical();
+        }
+
+        private Dictionary<string, List<int>> BuildGroupedIndices()
+        {
+            var groupedIndices = new Dictionary<string, List<int>>();
+            var count = _allSingletonsProperty.arraySize;
+
+            for (var i = 0; i < count; i++)
+            {
+                var element = _allSingletonsProperty.GetArrayElementAtIndex(i);
+                var singleton = element.objectReferenceValue as Singleton;
+                if (singleton == null)
+                {
+                    continue;
+                }
+
+                var groupName = string.IsNullOrEmpty(singleton.Group)
+                    ? UngroupedSectionName
+                    : singleton.Group;
+
+                if (!groupedIndices.TryGetValue(groupName, out var indices))
+                {
+                    indices = new List<int>();
+                    groupedIndices[groupName] = indices;
+                }
+
+                indices.Add(i);
+            }
+
+            return groupedIndices;
+        }
+
+        private void DrawGroupSection(string groupName, List<int> indices)
+        {
+            var foldoutKey = GroupFoldoutPrefsPrefix + groupName;
+            var foldout = EditorPrefs.GetBool(foldoutKey, true);
+            var foldoutStyle = new GUIStyle(EditorStyles.foldout) { fontStyle = FontStyle.Bold };
+            var newFoldout = EditorGUILayout.Foldout(foldout, groupName, true, foldoutStyle);
+            if (newFoldout != foldout)
+            {
+                EditorPrefs.SetBool(foldoutKey, newFoldout);
+            }
+
+            if (!newFoldout)
+            {
+                return;
+            }
+
+            EditorGUI.indentLevel++;
+            foreach (var index in indices)
+            {
+                var element = _allSingletonsProperty.GetArrayElementAtIndex(index);
+                var singleton = element.objectReferenceValue;
+                if (singleton == null)
+                {
+                    continue;
+                }
+
+                var isSelected = index == _selectedIndex;
+                var style = new GUIStyle(GUI.skin.button)
+                {
+                    alignment = TextAnchor.MiddleLeft,
+                    normal = { background = isSelected ? Texture2D.grayTexture : null },
+                };
+
+                if (GUILayout.Button(singleton.name, style, GUILayout.Height(25)))
+                {
+                    SelectSingleton(index);
+                }
+            }
+
+            EditorGUI.indentLevel--;
+            EditorGUILayout.Space(5);
         }
 
         private void DrawInspector()

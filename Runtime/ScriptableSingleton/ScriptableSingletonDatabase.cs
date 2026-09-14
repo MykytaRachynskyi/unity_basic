@@ -15,7 +15,21 @@ namespace Basic.Singleton
         [SerializeField]
         private List<Singleton> allSingletons;
 
+        [SerializeField]
+        private List<string> groups;
+
         private static Dictionary<int, Singleton> _singletonMap;
+
+        public static IReadOnlyList<string> GetGroups()
+        {
+            var instance = Instance;
+            if (instance == null || instance.groups == null)
+            {
+                return System.Array.Empty<string>();
+            }
+
+            return instance.groups;
+        }
 
         public static void Refresh()
         {
@@ -126,6 +140,39 @@ namespace Basic.Singleton
 #endif
         }
 
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (allSingletons == null)
+            {
+                return;
+            }
+
+            var validGroups = groups != null ? new HashSet<string>(groups) : new HashSet<string>();
+
+            foreach (var singleton in allSingletons)
+            {
+                if (singleton == null)
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(singleton.Group))
+                {
+                    continue;
+                }
+
+                if (validGroups.Contains(singleton.Group))
+                {
+                    continue;
+                }
+
+                singleton.ClearGroup();
+                UnityEditor.EditorUtility.SetDirty(singleton);
+            }
+        }
+#endif
+
         private static ScriptableSingletonDatabase _instance;
 
         // Retained for process lifetime — releasing unloads the bundle and nulls nested
@@ -211,7 +258,7 @@ namespace Basic.Singleton
         }
 
         private static bool TryLoadAssetFromAssetDatabase<T>(out T obj)
-            where T : Object
+            where T : UnityEngine.Object
         {
             obj = null;
 

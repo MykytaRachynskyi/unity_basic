@@ -1,8 +1,31 @@
+using System.Collections.Generic;
+using NaughtyAttributes;
 using UnityEngine;
 
 namespace Basic.Singleton
 {
-    public abstract class Singleton : ScriptableObject { }
+    public abstract class Singleton : ScriptableObject
+    {
+        [SerializeField]
+        [Dropdown(nameof(GetGroupDropdownValues))]
+        private string group;
+
+        public string Group => group;
+
+#if UNITY_EDITOR
+        internal void ClearGroup()
+        {
+            group = string.Empty;
+        }
+#endif
+
+        private List<string> GetGroupDropdownValues()
+        {
+            var values = new List<string> { string.Empty };
+            values.AddRange(ScriptableSingletonDatabase.GetGroups());
+            return values;
+        }
+    }
 
     public abstract class Singleton<T> : Singleton
         where T : Singleton<T>

@@ -13,3 +13,4 @@ MonoBehaviour:
   m_Name: ScriptableSingletonDatabase
   m_EditorClassIdentifier: 
   allSingletons: []
+  groups: []
