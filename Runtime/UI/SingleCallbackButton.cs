@@ -6,8 +6,8 @@ namespace Basic.UI
     public class SingleCallbackButton : MonoBehaviour
     {
         [SerializeField]
-        private Button mainButton;
-        private System.Action _callback;
+        protected Button mainButton;
+        protected System.Action _callback;
 
         private void Awake() => mainButton.onClick.AddListener(OnClick);
 
