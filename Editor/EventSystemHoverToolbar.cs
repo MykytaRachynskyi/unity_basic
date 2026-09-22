@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Basic.UI;
 using UnityEditor;
 using UnityEditor.Toolbars;
 using UnityEngine;
@@ -207,7 +208,7 @@ namespace Basic.UnityEditorTools
 				return new MainToolbarContent("Hover: —", idleTooltip);
 			}
 
-			var tooltipPath = GetHierarchyPath(CurrentHovered);
+			var tooltipPath = EventSystemUtility.GetScenePath(CurrentHovered);
 			if (!IsMouseInGameView())
 				tooltipPath += "\n(Mouse outside Game view — showing last hovered object)";
 
@@ -227,19 +228,6 @@ namespace Basic.UnityEditorTools
 			var pointerData = new PointerEventData(eventSystem) { position = EventSystemHoverInput.GetMouseScreenPosition() };
 			eventSystem.RaycastAll(pointerData, RaycastResults);
 			return RaycastResults.Count > 0 ? RaycastResults[0].gameObject : null;
-		}
-
-		private static string GetHierarchyPath(GameObject gameObject)
-		{
-			var path = gameObject.name;
-			var current = gameObject.transform.parent;
-			while (current != null)
-			{
-				path = current.name + "/" + path;
-				current = current.parent;
-			}
-
-			return path;
 		}
 
 		private static void PopulateContextMenu(DropdownMenu menu)
