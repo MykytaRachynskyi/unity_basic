@@ -102,33 +102,106 @@ namespace NaughtyAttributes.Editor
         }
 
         /// <summary>
-        /// Creates a dropdown
+        /// Creates a dropdown. Writes through <see cref="SerializedProperty"/> so ScriptableObject
+        /// assets are dirtied and persist to disk (reflection-only SetValue does not).
         /// </summary>
         /// <param name="rect">The rect the defines the position and size of the dropdown in the inspector</param>
-        /// <param name="serializedObject">The serialized object that is being updated</param>
-        /// <param name="target">The target object that contains the dropdown</param>
-        /// <param name="dropdownField">The field of the target object that holds the currently selected dropdown value</param>
+        /// <param name="property">The serialized property being edited</param>
         /// <param name="label">The label of the dropdown</param>
         /// <param name="selectedValueIndex">The index of the value from the values array</param>
         /// <param name="values">The values of the dropdown</param>
         /// <param name="displayOptions">The display options for the values</param>
         public static void Dropdown(
-            Rect rect, SerializedObject serializedObject, object target, FieldInfo dropdownField,
+            Rect rect, SerializedProperty property,
             string label, int selectedValueIndex, object[] values, string[] displayOptions)
         {
-            EditorGUI.BeginChangeCheck();
-
             int newIndex = EditorGUI.Popup(rect, label, selectedValueIndex, displayOptions);
             object newValue = values[newIndex];
 
-            object dropdownValue = dropdownField.GetValue(target);
-            if (dropdownValue == null || !dropdownValue.Equals(newValue))
+            if (SerializedPropertyEquals(property, newValue))
             {
-                Undo.RecordObject(serializedObject.targetObject, "Dropdown");
+                return;
+            }
 
-                // TODO: Problem with structs, because they are value type.
-                // The solution is to make boxing/unboxing but unfortunately I don't know the compile time type of the target object
-                dropdownField.SetValue(target, newValue);
+            Undo.RecordObject(property.serializedObject.targetObject, "Dropdown");
+            SetSerializedPropertyValue(property, newValue);
+            EditorUtility.SetDirty(property.serializedObject.targetObject);
+        }
+
+        private static bool SerializedPropertyEquals(SerializedProperty property, object value)
+        {
+            switch (property.propertyType)
+            {
+                case SerializedPropertyType.Integer:
+                    return value != null && property.intValue.Equals(Convert.ToInt32(value));
+                case SerializedPropertyType.Boolean:
+                    return value != null && property.boolValue.Equals(Convert.ToBoolean(value));
+                case SerializedPropertyType.Float:
+                    return value != null && property.floatValue.Equals(Convert.ToSingle(value));
+                case SerializedPropertyType.String:
+                    var stringValue = value as string ?? value?.ToString() ?? string.Empty;
+                    return property.stringValue == stringValue;
+                case SerializedPropertyType.ObjectReference:
+                    return property.objectReferenceValue == value as UnityEngine.Object;
+                case SerializedPropertyType.Enum:
+                    return value != null && property.intValue.Equals(Convert.ToInt32(value));
+                case SerializedPropertyType.Vector2:
+                    return value is Vector2 vector2 && property.vector2Value == vector2;
+                case SerializedPropertyType.Vector3:
+                    return value is Vector3 vector3 && property.vector3Value == vector3;
+                case SerializedPropertyType.Vector4:
+                    return value is Vector4 vector4 && property.vector4Value == vector4;
+                case SerializedPropertyType.Color:
+                    return value is Color color && property.colorValue == color;
+                case SerializedPropertyType.Quaternion:
+                    return value is Quaternion quaternion && property.quaternionValue == quaternion;
+                default:
+                    return false;
+            }
+        }
+
+        private static void SetSerializedPropertyValue(SerializedProperty property, object value)
+        {
+            switch (property.propertyType)
+            {
+                case SerializedPropertyType.Integer:
+                    property.intValue = Convert.ToInt32(value);
+                    break;
+                case SerializedPropertyType.Boolean:
+                    property.boolValue = Convert.ToBoolean(value);
+                    break;
+                case SerializedPropertyType.Float:
+                    property.floatValue = Convert.ToSingle(value);
+                    break;
+                case SerializedPropertyType.String:
+                    property.stringValue = value as string ?? value?.ToString() ?? string.Empty;
+                    break;
+                case SerializedPropertyType.ObjectReference:
+                    property.objectReferenceValue = value as UnityEngine.Object;
+                    break;
+                case SerializedPropertyType.Enum:
+                    property.intValue = Convert.ToInt32(value);
+                    break;
+                case SerializedPropertyType.Vector2:
+                    property.vector2Value = (Vector2)value;
+                    break;
+                case SerializedPropertyType.Vector3:
+                    property.vector3Value = (Vector3)value;
+                    break;
+                case SerializedPropertyType.Vector4:
+                    property.vector4Value = (Vector4)value;
+                    break;
+                case SerializedPropertyType.Color:
+                    property.colorValue = (Color)value;
+                    break;
+                case SerializedPropertyType.Quaternion:
+                    property.quaternionValue = (Quaternion)value;
+                    break;
+                default:
+                    Debug.LogWarning(
+                        $"Dropdown cannot write SerializedPropertyType.{property.propertyType} on '{property.propertyPath}'.",
+                        property.serializedObject.targetObject);
+                    break;
             }
         }
 
