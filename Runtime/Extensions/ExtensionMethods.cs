@@ -25,5 +25,29 @@ namespace Basic
 				(list[i], list[j]) = (list[j], list[i]);
 			}
 		}
+
+		public static string WhoIsThis(this GameObject gameObject)
+		{
+			if (gameObject == null)
+				return null;
+
+			var path = gameObject.name;
+			var current = gameObject.transform.parent;
+			while (current != null)
+			{
+				path = current.name + "/" + path;
+				current = current.parent;
+			}
+
+			return path;
+		}
+
+		public static string WhoIsThis(this Component component)
+		{
+			if (component == null)
+				return null;
+
+			return component.gameObject.WhoIsThis();
+		}
 	}
 }

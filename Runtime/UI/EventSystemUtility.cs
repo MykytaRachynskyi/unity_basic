@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Basic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 #if ENABLE_INPUT_SYSTEM
@@ -28,21 +29,7 @@ namespace Basic.UI
 			return true;
 		}
 
-		public static string GetScenePath(GameObject gameObject)
-		{
-			if (gameObject == null)
-				return null;
-
-			var path = gameObject.name;
-			var current = gameObject.transform.parent;
-			while (current != null)
-			{
-				path = current.name + "/" + path;
-				current = current.parent;
-			}
-
-			return path;
-		}
+		public static string GetScenePath(GameObject gameObject) => gameObject.WhoIsThis();
 
 		private static GameObject RaycastPointerGameObject(EventSystem eventSystem)
 		{
