@@ -19,6 +19,7 @@ namespace Basic.Singleton
         private List<string> groups;
 
         private static Dictionary<int, Singleton> _singletonMap;
+        private static bool _recreatingMap;
 
         public static IReadOnlyList<string> GetGroups()
         {
@@ -33,7 +34,13 @@ namespace Basic.Singleton
 
         public static void Refresh()
         {
-            Instance.RefreshDatabase();
+            var instance = Instance;
+            if (instance == null)
+            {
+                return;
+            }
+
+            instance.RefreshDatabase();
         }
 
         public static T GetSingleton<T>()
@@ -44,20 +51,46 @@ namespace Basic.Singleton
                 RecreateSingletonMap();
             }
 
+            if (!_singletonMap.TryGetValue(typeof(T).GetHashCode(), out var singleton))
             {
-                if (!_singletonMap.TryGetValue(typeof(T).GetHashCode(), out var singleton))
+                if (!_recreatingMap)
                 {
                     Log.Error($"Singleton of type {typeof(T).Name} not found in singleton map!");
-                    return null;
                 }
 
-                return (T)singleton;
+                return null;
             }
+
+            return (T)singleton;
         }
 
         private static void RecreateSingletonMap()
         {
-            _singletonMap = BuildSingletonMap(Instance.allSingletons);
+            if (_recreatingMap)
+            {
+                _singletonMap ??= new Dictionary<int, Singleton>();
+                return;
+            }
+
+            _recreatingMap = true;
+            try
+            {
+                // Ensure nested GetSingleton calls see a non-null map and do not re-enter.
+                _singletonMap ??= new Dictionary<int, Singleton>();
+
+                var db = Instance;
+                if (db == null)
+                {
+                    _singletonMap = new Dictionary<int, Singleton>();
+                    return;
+                }
+
+                _singletonMap = BuildSingletonMap(db.allSingletons);
+            }
+            finally
+            {
+                _recreatingMap = false;
+            }
         }
 
         private static Dictionary<int, Singleton> BuildSingletonMap(List<Singleton> singletons)
@@ -73,7 +106,7 @@ namespace Basic.Singleton
                 var singleton = singletons[i];
                 if (singleton == null)
                 {
-                    Log.Warning(
+                    Debug.LogWarning(
                         $"ScriptableSingletonDatabase.allSingletons[{i}] is null and was skipped. "
                             + "The reference may be Editor-only or missing from the player build."
                     );
@@ -188,7 +221,7 @@ namespace Basic.Singleton
                     {
                         if (!LoadFromAssetDatabase(out _instance))
                         {
-                            Log.Error(
+                            Debug.LogError(
                                 "Failed to load Scriptable Singleton Database from asset database."
                             );
                         }
@@ -197,7 +230,7 @@ namespace Basic.Singleton
                     {
                         if (!LoadFromAddressables(out _instance))
                         {
-                            Log.Error(
+                            Debug.LogError(
                                 $"Failed to load ScriptableSingletonDatabase from Addressables (label: {typeof(ScriptableSingletonDatabase).Name}). "
                                     + "Ensure the asset is addressable, labeled, and Addressables content is built."
                             );
@@ -248,7 +281,7 @@ namespace Basic.Singleton
 
             if (assets.Count > 1)
             {
-                Log.Warning(
+                Debug.LogWarning(
                     $"Multiple ScriptableSingletonDatabase assets found with label '{label}'; using '{assets[0].name}'."
                 );
             }

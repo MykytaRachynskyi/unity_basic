@@ -13,6 +13,7 @@ namespace Basic
         private static readonly object SinkLock = new();
         private static LogLevel _minLevel = LogLevel.Verbose;
         private static bool _initialized;
+        private static bool _initializing;
 
         // ───────────────────────── Configuration ─────────────────────────
 
@@ -192,26 +193,47 @@ namespace Basic
 
         private static void EnsureInitialized()
         {
+            // Nested Log.* during settings resolution (scriptable singletons) must not re-enter.
+            if (_initializing)
+            {
+                EnsureFallbackSink();
+                return;
+            }
+
             if (_initialized)
                 return;
 
-            _initialized = true;
-
-            LoggerSettings settings = null;
-            if (LoggerSettingsContainer.Instance != null)
-                settings = LoggerSettingsContainer.Settings;
-
-            if (settings != null)
+            _initializing = true;
+            try
             {
-                _minLevel = settings.DefaultMinLevel;
+                LoggerSettings settings = null;
+                if (LoggerSettingsContainer.Instance != null)
+                    settings = LoggerSettingsContainer.Settings;
 
-                if (settings.EnableConsoleSink)
-                    Sinks.Add(new UnityConsoleSink());
+                if (settings != null)
+                {
+                    _minLevel = settings.DefaultMinLevel;
 
-                if (settings.EnableFileSink)
-                    Sinks.Add(new FileSink());
+                    if (settings.EnableConsoleSink)
+                        Sinks.Add(new UnityConsoleSink());
+
+                    if (settings.EnableFileSink)
+                        Sinks.Add(new FileSink());
+                }
+
+                EnsureFallbackSink();
+                _initialized = true;
             }
+            finally
+            {
+                _initializing = false;
+                EnsureFallbackSink();
+                _initialized = true;
+            }
+        }
 
+        private static void EnsureFallbackSink()
+        {
             if (Sinks.Count == 0)
                 Sinks.Add(new UnityConsoleSink());
         }

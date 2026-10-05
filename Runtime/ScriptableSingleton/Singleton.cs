@@ -39,7 +39,7 @@ namespace Basic.Singleton
                 if (_instance == null)
                 {
                     _instance = ScriptableSingletonDatabase.GetSingleton<T>();
-                    if (_instance == null)
+                    if (_instance == null && CanRefreshDatabase())
                     {
                         ScriptableSingletonDatabase.Refresh();
                         _instance = ScriptableSingletonDatabase.GetSingleton<T>();
@@ -48,6 +48,15 @@ namespace Basic.Singleton
 
                 return _instance;
             }
+        }
+
+        private static bool CanRefreshDatabase()
+        {
+#if UNITY_EDITOR
+            return !UnityEditor.AssetDatabase.IsAssetImportWorkerProcess();
+#else
+            return false;
+#endif
         }
     }
 }
