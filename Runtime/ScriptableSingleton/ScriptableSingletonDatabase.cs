@@ -208,6 +208,10 @@ namespace Basic.Singleton
 
         private static ScriptableSingletonDatabase _instance;
 
+        // When true, Instance stays null instead of auto-loading from AssetDatabase/Addressables.
+        // Used by EditMode tests that simulate a missing database in projects that ship one.
+        private static bool _suppressAutoLoad;
+
         // Retained for process lifetime — releasing unloads the bundle and nulls nested
         // serialized refs on singletons (e.g. BuildingDatabase.allConfigs).
         private static AsyncOperationHandle<IList<ScriptableSingletonDatabase>> _addressablesHandle;
@@ -217,6 +221,11 @@ namespace Basic.Singleton
             {
                 if (_instance == null)
                 {
+                    if (_suppressAutoLoad)
+                    {
+                        return null;
+                    }
+
                     if (Application.isEditor)
                     {
                         if (!LoadFromAssetDatabase(out _instance))

@@ -23,6 +23,7 @@ namespace Basic.Singleton.Tests
         [TearDown]
         public void TearDown()
         {
+            SetSuppressAutoLoad(false);
             SetStaticInstance(_previousInstance);
             SetSingletonMap(_previousMap);
             SetRecreatingMap(false);
@@ -94,15 +95,15 @@ namespace Basic.Singleton.Tests
         [Test]
         public void GetSingleton_NullDatabaseInstance_ReturnsNullWithoutThrowing()
         {
+            // Suppress AssetDatabase auto-load so consuming projects that ship a
+            // ScriptableSingletonDatabase.asset still exercise the null-DB soft-fail path.
+            SetSuppressAutoLoad(true);
             SetStaticInstance(null);
             SetSingletonMap(null);
 
-            LogAssert.Expect(
-                LogType.Error,
-                "Failed to load Scriptable Singleton Database from asset database."
-            );
-            // May also emit formatted Log.Error for the missing type and/or logger settings
-            // during first-time Log bootstrap — ignore those so the soft-fail is the focus.
+            // Empty-map lookup may emit formatted Log.Error for the missing type and/or
+            // logger settings during first-time Log bootstrap — ignore those so the soft-fail
+            // is the focus.
             LogAssert.ignoreFailingMessages = true;
             try
             {
@@ -125,12 +126,8 @@ namespace Basic.Singleton.Tests
         [Test]
         public void Refresh_NullDatabaseInstance_DoesNotThrow()
         {
+            SetSuppressAutoLoad(true);
             SetStaticInstance(null);
-
-            LogAssert.Expect(
-                LogType.Error,
-                "Failed to load Scriptable Singleton Database from asset database."
-            );
 
             Assert.DoesNotThrow(ScriptableSingletonDatabase.Refresh);
         }
@@ -223,6 +220,16 @@ namespace Basic.Singleton.Tests
         {
             var field = typeof(ScriptableSingletonDatabase).GetField(
                 "_recreatingMap",
+                BindingFlags.NonPublic | BindingFlags.Static
+            );
+            Assert.That(field, Is.Not.Null);
+            field.SetValue(null, value);
+        }
+
+        private static void SetSuppressAutoLoad(bool value)
+        {
+            var field = typeof(ScriptableSingletonDatabase).GetField(
+                "_suppressAutoLoad",
                 BindingFlags.NonPublic | BindingFlags.Static
             );
             Assert.That(field, Is.Not.Null);
