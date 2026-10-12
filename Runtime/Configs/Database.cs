@@ -53,10 +53,21 @@ namespace Basic
             if (dirty)
             {
                 UnityEditor.EditorUtility.SetDirty(this);
-                UnityEditor.AssetDatabase.SaveAssets();
+                // SaveAssets during OnValidate triggers CheckConsistency on open
+                // scenes/prefabs (e.g. SpriteRenderer SendMessage warnings). Defer it.
+                UnityEditor.EditorApplication.delayCall -= EditorDeferredSaveAssets;
+                UnityEditor.EditorApplication.delayCall += EditorDeferredSaveAssets;
             }
 #endif
         }
+
+#if UNITY_EDITOR
+        private static void EditorDeferredSaveAssets()
+        {
+            UnityEditor.EditorApplication.delayCall -= EditorDeferredSaveAssets;
+            UnityEditor.AssetDatabase.SaveAssets();
+        }
+#endif
 
         public void GetNames(IList<string> list)
         {

@@ -12,7 +12,10 @@ namespace Basic.UnityEditorTools
 		[Shortcut(ShortcutId, KeyCode.R, ShortcutModifiers.Action | ShortcutModifiers.Shift | ShortcutModifiers.Alt)]
 		private static void RequestRecompile()
 		{
-			CompilationPipeline.RequestScriptCompilation();
+			// CleanBuildCache forces a full rebuild so compiler warnings reappear in the Console.
+			CompilationPipeline.RequestScriptCompilation(
+				RequestScriptCompilationOptions.CleanBuildCache
+			);
 		}
 	}
 }
